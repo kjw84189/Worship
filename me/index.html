@@ -106,6 +106,20 @@ pre.ly{white-space:pre-wrap;font:inherit;line-height:1.8;background:var(--bg);bo
 .pg .sc{display:block;width:100%;height:auto}
 .pg canvas.ink{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .drawing .pg canvas.ink{pointer-events:auto;touch-action:none}
+.pages.flip{position:fixed;inset:0;z-index:80;background:#3A3F47;display:block;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;margin:0;padding:0}
+.pages.flip .pg{position:absolute;margin:0;box-shadow:0 2px 14px rgba(0,0,0,.45)}
+.pages.flip .pg .pgno{opacity:.7}
+.pages.flip .pg .sc{pointer-events:none;-webkit-user-drag:none;user-select:none}
+.pages.flip.drawing.penonly .pg canvas.ink{touch-action:none}
+body.flipping{overflow:hidden}
+#flipbar{position:fixed;top:0;left:0;right:0;z-index:81;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;padding-top:max(6px,env(safe-area-inset-top));background:rgba(24,28,36,.95);color:#fff}
+#flipbar[hidden]{display:none}
+#flipbar button,#flipbar select{min-height:42px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;font:inherit;font-size:15px;padding:0 11px;cursor:pointer}
+#flipbar select option{color:#111}
+#flipbar button.on{background:#fff;color:#1C2230;border-color:#fff;font-weight:700}
+#flipbar button:disabled{opacity:.35}
+#flipbar .pgi{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;padding:0 6px;white-space:nowrap}
+
 .drawing.penonly .pg canvas.ink{touch-action:pan-x pan-y}
 .pgno{position:absolute;right:8px;bottom:6px;font-size:12px;color:#8a93a3;background:rgba(255,255,255,.85);border-radius:6px;padding:0 6px}
 .save{font-size:13px;color:var(--sub);margin-left:auto}
@@ -627,7 +641,7 @@ async function scoreView(){
   try { const a = await api('getAnn', v.id); if (INK === my) INK.mine = a || {}; } catch(e){}
   await renderFiles(v.scores.map(f => f.id), document.getElementById('pages'), true);
 }
-function leaveScore(){ if (INK && INK.dirty) flushSave(); INK = null; }
+function leaveScore(){ flipClose(); if (INK && INK.dirty) flushSave(); INK = null; }
 async function renderFiles(fids, P, own){
   const my = INK; let n = 0, first = true;
   try {
@@ -655,7 +669,7 @@ function addPage(P, n){ const wrap = document.createElement('div'); wrap.classNa
 function fitInk(pg, w, h){ pg.w = w; pg.h = h; pg.ink.width = Math.round(w); pg.ink.height = Math.round(h); drawPage(pg); }
 function tools(){
   const T = document.getElementById('tools'); if (!T || !INK) return; const d = INK.drawing;
-  let h = '<div class="trow"><button class="tb' + (d ? '' : ' on') + '" data-mode="view">보기</button><button class="tb' + (d ? ' on' : '') + '" data-mode="draw">✎ 쓰기</button>';
+  let h = '<div class="trow"><button class="tb' + (d ? '' : ' on') + '" data-mode="view">보기</button><button class="tb' + (d ? ' on' : '') + '" data-mode="draw">✎ 쓰기</button><button class="tb" id="flipBtn">📖 넘기기</button>';
   if (d) h += PENS.map(p => '<button class="tb' + (INK.tool === 'pen' && INK.color === p.c ? ' on' : '') + '" data-pen="' + p.c + '" aria-label="' + p.n + '"><span class="dot" style="background:' + p.c + '"></span></button>').join('') +
     '<button class="tb' + (INK.tool === 'hl' ? ' on' : '') + '" data-tool="hl"><span class="dot" style="background:#FFD84A"></span>형광</button><button class="tb' + (INK.tool === 'tx' ? ' on' : '') + '" data-tool="tx">🏷 주석</button><button class="tb' + (INK.tool === 'er' ? ' on' : '') + '" data-tool="er">지우개</button><button class="tb" id="undo">↶</button><button class="tb' + (INK.penOnly ? ' on' : '') + '" id="po">펜으로만</button>';
   h += '<button class="tb" id="dl">⬇ PDF</button><span class="save" id="sv"></span></div>';
@@ -669,7 +683,81 @@ function tools(){
   const u = document.getElementById('undo'); if (u) u.onclick = undo;
   const po = document.getElementById('po'); if (po) po.onclick = () => { INK.penOnly = !INK.penOnly; LS.set('arr-penonly', INK.penOnly); tools(); modeClass(); };
   document.getElementById('dl').onclick = exportPdf;
+  const fb = document.getElementById('flipBtn'); if (fb) fb.onclick = () => flipOpen(null);
 }
+/* ── 넘기기 보기 (Piascore 방식): 한 쪽씩 크게 · 오른쪽/왼쪽 탭·옆으로 밀기·블루투스 페달로 넘김 · 반 쪽 넘기기 · 가로 두 쪽 ── */
+const FLIP = { on: false, pos: 0, songs: null, bar: true, half: LS.get('flip-half', true), two: LS.get('flip-two', true) };
+function flipTwo(){ return FLIP.two && innerWidth > innerHeight && innerWidth >= 700; }
+function flipOpen(songs){
+  const P = document.getElementById('pages'); if (!P || !INK || !INK.pages.length || !INK.pages[0].w) return toast('악보를 불러오는 중이에요. 잠시 뒤에 눌러 주세요');
+  const mid = innerHeight / 2; let i = INK.pages.findIndex(p => { const r = p.wrap.getBoundingClientRect(); return r.top <= mid && r.bottom >= mid; }); if (i < 0) i = 0;
+  FLIP.on = true; FLIP.songs = songs || null; FLIP.pos = i * 2; FLIP.bar = true;
+  P.classList.add('flip'); document.body.classList.add('flipping');
+  let bar = document.getElementById('flipbar'); if (!bar) { bar = document.createElement('div'); bar.id = 'flipbar'; document.body.appendChild(bar); }
+  if (!P._flipBound) { P._flipBound = true; let st = null;
+    P.addEventListener('pointerdown', e => { if (!FLIP.on) return; const drawing = INK && INK.drawing && e.target.classList.contains('ink') && !(INK.penOnly && e.pointerType === 'touch'); st = drawing ? null : { x: e.clientX, y: e.clientY, t: Date.now() }; });
+    P.addEventListener('pointerup', e => { if (!FLIP.on || !st) return; const dx = e.clientX - st.x, dy = e.clientY - st.y; const s0 = st; st = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) return flipGo(dx < 0 ? 1 : -1);
+      if (Math.hypot(dx, dy) > 12 || Date.now() - s0.t > 600) return;
+      const w = innerWidth; if (e.clientX > w * 0.62) flipGo(1); else if (e.clientX < w * 0.38) flipGo(-1); else { FLIP.bar = !FLIP.bar; flipBar(); flipShow(); } });
+    P.addEventListener('pointercancel', () => { st = null; }); }
+  flipBar(); flipShow();
+}
+function flipClose(){
+  if (!FLIP.on) return; FLIP.on = false; const P = document.getElementById('pages'), i = Math.floor(FLIP.pos / 2);
+  if (P) P.classList.remove('flip'); document.body.classList.remove('flipping'); const FL = document.getElementById('flipline'); if (FL) FL.remove();
+  const bar = document.getElementById('flipbar'); if (bar) bar.remove();
+  if (INK) { INK.pages.forEach(p => { ['display', 'left', 'top', 'width', 'clipPath', 'zIndex'].forEach(k => p.wrap.style[k] = ''); });
+    const p = INK.pages[i]; if (p) setTimeout(() => { const T = document.getElementById('tools'), top = p.wrap.getBoundingClientRect().top + scrollY - ((T && T.offsetHeight) || 0) - 8; scrollTo(0, top); }, 30); }
+}
+function flipMax(){ return INK ? INK.pages.length * 2 - 2 : 0; }
+function flipGo(d){ if (!FLIP.on || !INK) return; const two = flipTwo(), N = INK.pages.length; let p = FLIP.pos;
+  if (two) p = Math.floor(p / 2) * 2 + d * 4; else if (FLIP.half) p += d; else p = Math.floor(p / 2) * 2 + d * 2;
+  if (!two && FLIP.half && p % 2 === 1 && Math.floor(p / 2) >= N - 1) p += d;   // 마지막 쪽에는 반 쪽 단계가 없음
+  p = Math.max(0, Math.min(flipMax(), p)); if (p === FLIP.pos) return toast(d > 0 ? '마지막 쪽이에요' : '첫 쪽이에요');
+  FLIP.pos = p; flipShow(); }
+function flipBar(){ const bar = document.getElementById('flipbar'); if (!bar) return; bar.hidden = !FLIP.bar; if (!FLIP.bar) return;
+  const two = flipTwo(), d = INK && INK.drawing;
+  bar.innerHTML = '<button id="fxC" aria-label="넘기기 보기 닫기">✕ 닫기</button><button id="fxF" aria-label="첫 쪽">⏮</button><button id="fxP" aria-label="앞 쪽">◀</button><button id="fxN" aria-label="다음 쪽">▶</button><button id="fxL" aria-label="마지막 쪽">⏭</button>' +
+    (FLIP.songs && FLIP.songs.length ? '<select id="fxS" aria-label="곡으로 가기"><option value="">곡으로 가기</option>' + FLIP.songs.map(x => '<option value="' + x.page + '">' + esc(x.label) + '</option>').join('') + '</select>' : '') +
+    '<button id="fxH" class="' + (FLIP.half ? 'on' : '') + '"' + (two ? ' disabled' : '') + '>반 쪽 넘기기</button><button id="fxT" class="' + (FLIP.two ? 'on' : '') + '">가로 두 쪽</button>' +
+    '<button id="fxD" class="' + (d ? 'on' : '') + '">✎ 쓰기</button>' + (d ? '<button id="fxU" aria-label="되돌리기">↶</button>' : '') + '<span class="pgi" id="fxI"></span>';
+  const on = (id, f) => { const b = document.getElementById(id); if (b) b.onclick = f; };
+  on('fxC', flipClose); on('fxP', () => flipGo(-1)); on('fxN', () => flipGo(1));
+  on('fxF', () => { FLIP.pos = 0; flipShow(); }); on('fxL', () => { FLIP.pos = flipMax(); flipShow(); });
+  on('fxH', () => { FLIP.half = !FLIP.half; LS.set('flip-half', FLIP.half); FLIP.pos = Math.floor(FLIP.pos / 2) * 2; flipBar(); flipShow(); toast(FLIP.half ? '반 쪽씩 넘겨요: 다음 쪽 윗부분이 먼저 보여요' : '한 쪽씩 넘겨요'); });
+  on('fxT', () => { FLIP.two = !FLIP.two; LS.set('flip-two', FLIP.two); FLIP.pos = Math.floor(FLIP.pos / 2) * 2; flipBar(); flipShow(); if (FLIP.two && !flipTwo()) toast('기기를 가로로 놓으면 두 쪽씩 보여요'); });
+  on('fxD', () => { const go = () => { INK.drawing = !INK.drawing; modeClass(); typeof tools === 'function' && tools(); flipBar(); flipShow(); toast(INK.drawing ? (INK.penOnly ? '펜으로 쓰고, 손가락으로 넘겨요' : '악보에 써요. 넘길 때는 ◀ ▶ 를 눌러요') : '보기로 돌아왔어요'); };
+    if (!INK.drawing && typeof ME !== 'undefined' && !ME && typeof askName === 'function') return askName(go); go(); });
+  on('fxU', () => typeof undo === 'function' && undo());
+  const sel = document.getElementById('fxS'); if (sel) sel.onchange = () => { const pg = +sel.value; if (pg) { FLIP.pos = (pg - 1) * 2; flipShow(); } sel.value = ''; };
+}
+function flipShow(){
+  if (!FLIP.on || !INK) return; const N = INK.pages.length, two = flipTwo(); if (two) FLIP.pos = Math.floor(FLIP.pos / 2) * 2 - (Math.floor(FLIP.pos / 2) % 2) * 2;
+  const i = Math.floor(FLIP.pos / 2), half = !two && FLIP.half && FLIP.pos % 2 === 1 && i + 1 < N;
+  INK.pages.forEach(p => { p.wrap.style.display = 'none'; p.wrap.style.clipPath = ''; p.wrap.style.zIndex = ''; });
+  const bar = document.getElementById('flipbar'), bh = bar && !bar.hidden ? bar.offsetHeight : 0, aw = innerWidth - 12, ah = innerHeight - bh - 12, top0 = bh + 6;
+  const place = (p, x, w, top) => { p.wrap.style.display = 'block'; p.wrap.style.left = Math.round(x) + 'px'; p.wrap.style.top = Math.round(top) + 'px'; p.wrap.style.width = Math.round(w) + 'px'; };
+  const fit = (p, W, H) => { const s = Math.min(W / (p.w || 1), H / (p.h || 1)); return [p.w * s, p.h * s]; };
+  let label = '', line = null;
+  if (two) { const a = INK.pages[i], b = INK.pages[i + 1], [wa, ha] = fit(a, aw / 2 - 4, ah);
+    if (b) { const [wb, hb] = fit(b, aw / 2 - 4, ah), tot = wa + wb + 8, x0 = 6 + (aw - tot) / 2; place(a, x0, wa, top0 + (ah - ha) / 2); place(b, x0 + wa + 8, wb, top0 + (ah - hb) / 2); label = (i + 1) + '–' + (i + 2) + ' / ' + N + '쪽'; }
+    else { place(a, 6 + (aw - wa) / 2, wa, top0 + (ah - ha) / 2); label = (i + 1) + ' / ' + N + '쪽'; } }
+  else { const a = INK.pages[i], [w, h] = fit(a, aw, ah), x = 6 + (aw - w) / 2, top = top0 + (ah - h) / 2; place(a, x, w, top);
+    if (half) { const b = INK.pages[i + 1], bh2 = b.h * (w / b.w) / 2; place(b, x, w, top); b.wrap.style.zIndex = 2; b.wrap.style.clipPath = 'inset(0 0 50% 0)'; label = (i + 1) + '→' + (i + 2) + ' / ' + N + '쪽';
+      line = { x, y: top + Math.min(bh2, h), w }; }
+    else label = (i + 1) + ' / ' + N + '쪽'; }
+  const P = document.getElementById('pages'); let L = document.getElementById('flipline');
+  if (line) { if (!L) { L = document.createElement('div'); L.id = 'flipline'; P.appendChild(L); } L.style.cssText = 'position:absolute;z-index:3;height:0;border-top:3px dashed #E5322D;pointer-events:none;left:' + Math.round(line.x) + 'px;top:' + Math.round(line.y) + 'px;width:' + Math.round(line.w) + 'px'; }
+  else if (L) L.remove();
+  const I = document.getElementById('fxI'); if (I) I.textContent = label;
+}
+document.addEventListener('keydown', e => { if (!FLIP.on) return; const t = e.target; if (t && /INPUT|TEXTAREA|SELECT/.test(t.tagName)) return;
+  if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); flipGo(1); }
+  else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); flipGo(-1); }
+  else if (e.key === 'Escape') flipClose(); });
+window.addEventListener('resize', () => { if (FLIP.on) { flipBar(); flipShow(); } });
+
 function modeClass(){ const P = document.getElementById('pages'); if (!P || !INK) return; P.classList.toggle('drawing', !!INK.drawing); P.classList.toggle('penonly', !!(INK.drawing && INK.penOnly)); }
 function drawStroke(ctx, s, W){
   const pts = s.p; if (!pts || !pts.length) return;
