@@ -672,7 +672,7 @@ function tools(){
   let h = '<div class="trow"><button class="tb' + (d ? '' : ' on') + '" data-mode="view">보기</button><button class="tb' + (d ? ' on' : '') + '" data-mode="draw">✎ 쓰기</button><button class="tb" id="flipBtn">📖 넘기기</button>';
   if (d) h += PENS.map(p => '<button class="tb' + (INK.tool === 'pen' && INK.color === p.c ? ' on' : '') + '" data-pen="' + p.c + '" aria-label="' + p.n + '"><span class="dot" style="background:' + p.c + '"></span></button>').join('') +
     '<button class="tb' + (INK.tool === 'hl' ? ' on' : '') + '" data-tool="hl"><span class="dot" style="background:#FFD84A"></span>형광</button><button class="tb' + (INK.tool === 'tx' ? ' on' : '') + '" data-tool="tx">🏷 주석</button><button class="tb' + (INK.tool === 'er' ? ' on' : '') + '" data-tool="er">지우개</button><button class="tb" id="undo">↶</button><button class="tb' + (INK.penOnly ? ' on' : '') + '" id="po">펜으로만</button>';
-  h += '<button class="tb" id="dl">⬇ PDF</button><button class="tb" id="shp" title="Piascore·forScore·도서·굿노트 등 내가 쓰는 앱을 고르세요">📤 내 악보 앱으로</button><span class="save" id="sv"></span></div>';
+  h += '<button class="tb" id="dl" title="PDF가 열리면 공유 버튼으로 도서·Piascore 등 내 앱으로 보내세요">⬇ 악보 저장 · 앱으로</button><span class="save" id="sv"></span></div>';
   if (d && INK.tool === 'tx') h += '<div class="trow" style="margin-top:6px">' + STAMPS.map(t => '<button class="tb' + (INK.stamp === t ? ' on' : '') + '" data-stamp="' + esc(t) + '">' + esc(t) + '</button>').join('') + '<button class="tb" id="stNew">＋ 직접</button></div>';
   T.innerHTML = h;
   T.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { INK.drawing = b.dataset.mode === 'draw'; tools(); modeClass(); });
@@ -683,7 +683,6 @@ function tools(){
   const u = document.getElementById('undo'); if (u) u.onclick = undo;
   const po = document.getElementById('po'); if (po) po.onclick = () => { INK.penOnly = !INK.penOnly; LS.set('arr-penonly', INK.penOnly); tools(); modeClass(); };
   document.getElementById('dl').onclick = () => exportPdf(false);
-  const shp = document.getElementById('shp'); if (shp) shp.onclick = () => exportPdf(true);
   const fb = document.getElementById('flipBtn'); if (fb) fb.onclick = () => flipOpen(null);
 }
 /* ── 넘기기 보기 (Piascore 방식): 한 쪽씩 크게 · 오른쪽/왼쪽 탭·옆으로 밀기·블루투스 페달로 넘김 · 반 쪽 넘기기 · 가로 두 쪽 ── */
