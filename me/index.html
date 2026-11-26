@@ -171,12 +171,13 @@ function closeModal(){ $modal.innerHTML = ''; }
    A1·A2 = A파트 1절·2절, B1·B2 = 후렴 1절·2절 (각자 가사)
    송폼은 적은 그대로 표시 · I(8) = Intro 8마디 · A1(+2) = 2마디 쉬고 · Bx2 = 두 번 반복 · Bis = 끝부분 반복(Bisx3 = 세 번) · Tag = 삽입곡·따로 편곡한 부분 = B 두 번 반복(가사도 두 번)
    I/In=Intro, It/Int=Inter, O/Out=Outro, Ed/End=Ending 으로 읽음 */
-const INSTR = /^[\(\[]?\s*(intro|inter|interlude|outro|ending|solo|간주|전주|후주|인트로|인터|아웃트로|엔딩|솔로|기도|멘트)/i;
+const INSTR = /^[\(\[]?\s*(intro|inter|interlude|outro|ending|solo|pad|rit|간주|전주|후주|인트로|인터|아웃트로|엔딩|솔로|패드|기도|멘트)/i;
 const ABBR = [[/^(i|in|intro)$/i, 'Intro'], [/^(it|int|inter|interlude)$/i, 'Inter'], [/^(o|out|outro)$/i, 'Outro'], [/^(ed|end|ending)$/i, 'Ending']];
 function formItems(f){ const out = [];
   String(f || '').split(/[\/|→\n]+/).map(t => t.trim()).filter(Boolean).forEach(t => {
     let rep = 1, bars = 0, m; const label = t.replace(/\s+/g, ' ');
-    if ((m = /\s*[x×*]\s*(\d+)\s*$/i.exec(t))) { rep = Math.min(9, +m[1] || 1); t = t.slice(0, m.index); }
+    // x2 · Dx2(drum) · B(+1)x2 → 반복 횟수
+    if ((m = /\s*[x×*]\s*(\d+)\s*(?=([\(\[][^\)\]]*[\)\]])?\s*$)/i.exec(t))) { rep = Math.min(9, +m[1] || 1); t = t.slice(0, m.index) + t.slice(m.index + m[0].length); }
     const head = t.trim().replace(/\s+/g, ' ');
     m = /^\s*([A-Za-z][A-Za-z'’\-]*\d*|[가-힣]+\d*)\s*(.*)$/.exec(t) || /^\s*([^\(\[]*?)\s*([\(\[].*)?$/.exec(t) || [t, t.trim(), ''];
     m[2] = m[2] || '';
@@ -185,24 +186,53 @@ function formItems(f){ const out = [];
     ABBR.forEach(([re, full]) => { if (re.test(name)) name = full; });
     const b = /^[\(\[]?(\d+)(?:마디)?[\)\]]?$/.exec(extra); if (b) { bars = +b[1]; extra = ''; }
     const pm = /\+\s*(\d+)/.exec(extra), plus = pm ? +pm[1] : 0;
-    out.push({ name, bars, plus, rep, head, label }); });
+    // 키업(Gkey)D 처럼 끝에 파트 이름이 붙은 경우 → D 가사를 씀
+    const tail = (/\)\s*([A-Za-z]\d*)$/.exec(extra) || [])[1] || '';
+    out.push({ name, bars, plus, rep, head, label, tail }); });
   return out; }
 function parseForm(f){ return formItems(f).map(i => i.label); }
 function formNames(f){ const all = [...new Set(formItems(f).map(i => i.name))];
   return all.filter(n => !(/^\D+$/.test(n) && all.some(o => o !== n && o.toLowerCase().startsWith(n.toLowerCase()) && /^\d+$/.test(o.slice(n.length))))); }
 function hasSec(sec, n){ return Object.keys(sec).some(k => k.toLowerCase() === n.toLowerCase()); }
-function parseSections(text){ const sec = {}, order = []; let cur = null;
-  String(text || '').replace(/\r/g, '').split('\n').forEach(l => { const m = /^\s*\[(.+?)\]\s*$/.exec(l);
-    if (m) { cur = m[1].replace(/\s*[\(\[].*$/, '').trim() || m[1].trim(); if (!(cur in sec)) { sec[cur] = []; order.push(cur); } }
-    else { if (cur === null) { cur = ''; sec[''] = []; order.push(''); } sec[cur].push(l); } });
-  Object.keys(sec).forEach(k => sec[k] = sec[k].join('\n').replace(/^\n+|\s+$/g, ''));
-  return { sec, order }; }
+/* 가사 칸 이름 정리: [A break] [Dx2 드럼] [Inter+4] [B1} [키업][D] → A · D · Inter · B1 · D */
+function secKey(raw){ let k = String(raw || '').replace(/\s*[\(\[].*$/, '').trim() || String(raw || '').trim();
+  const m = /^(\S+)\s+(\d+)$/.exec(k); k = m ? m[1] + m[2] : k.split(/\s+/)[0];
+  k = k.replace(/[x×*]\d+$/i, '').replace(/\+\d+$/, ''); return k || String(raw || '').trim(); }
+/* 한 칸 안에 같은 단락을 여러 번 적었으면 한 번만 (반복은 송폼의 x2 로) */
+function dedupPara(t){ const P = t.split(/\n[ \t]*\n+/), out = []; P.forEach(p => { const k = p.replace(/\s+/g, ' ').trim(); if (!out.length || out[out.length - 1].k !== k) out.push({ p, k }); }); return out.map(x => x.p).join('\n\n'); }
+function noteKey(t){ return String(t || '').toLowerCase().replace(/[^a-z가-힣]/g, ''); }
+function parseSections(text){ const sec = {}, order = [], seq = []; let cur = null, buf = [], note = '', reps = 1;
+  const flush = () => { if (cur === null) return; const body = dedupPara(buf.join('\n').replace(/^\n+|\s+$/g, '')); seq.push({ key: cur, body, note, rep: reps }); if (!(cur in sec)) { sec[cur] = body; order.push(cur); } else if (!sec[cur] && body) sec[cur] = body; };
+  String(text || '').replace(/\r/g, '').split('\n').forEach(l => {
+    if (/^\s*(\[[^\]\}\[]*[\]\}]\s*)+$/.test(l)) { flush(); const g = [...l.matchAll(/\[([^\]\}\[]*)[\]\}]/g)].map(x => x[1]), lastG = g[g.length - 1].trim(), w = (/^[^\s\(\[]+/.exec(lastG) || [''])[0];
+      cur = secKey(lastG); note = noteKey(g.slice(0, -1).join(' ') + ' ' + lastG.slice(w.length)); const rm = /[x×*](\d+)/i.exec(w); reps = rm ? Math.min(9, +rm[1]) : 1; buf = []; }
+    else { if (cur === null) { cur = ''; buf = []; note = ''; reps = 1; } buf.push(l); } });
+  flush();
+  return { sec, order, seq }; }
 /* 가사 찾기: 같은 이름 → (A2에 가사가 없으면) A → (A만 있고 A1에 가사가 있으면) A1 */
 function findSec(sec, name){ const keys = Object.keys(sec), low = name.toLowerCase(), hit = n => keys.find(k => k.toLowerCase() === n && sec[k]);
   return hit(low) || hit(low.replace(/\d+$/, '')) || (/\d$/.test(low) ? null : hit(low + '1')) || null; }
+/* 송폼의 한 부분에 쓸 가사 묶음 (가사를 펼쳐서 여러 번 적었으면 순서대로 씀)
+   A1 → [A1] (없으면 [A]) · A → [A] [A1] [A2]… 적힌 순서대로 */
+function secPool(P, name){ const low = name.toLowerCase(), base = low.replace(/\d+$/, ''), pick = L => { const out = []; L.forEach((s, i) => { for (let r = 0; r < s.rep; r++) out.push({ body: s.body, note: s.note, b: i }); }); return out; };
+  const exact = P.seq.filter(s => s.key.toLowerCase() === low && s.body);
+  if (/\d$/.test(low)) { if (exact.length) return { id: low, list: pick(exact) }; const b = P.seq.filter(s => s.key.toLowerCase() === base && s.body); return b.length ? { id: base, list: pick(b) } : null; }
+  const fam = P.seq.filter(s => s.key.toLowerCase().replace(/\d+$/, '') === low && s.body);
+  return fam.length ? { id: '*' + low, list: pick(fam) } : null; }
+/* 묶음에서 이번 차례 가사 고르기: [A break]처럼 이름 뒤 메모가 맞는 칸 → 메모 없는 칸 순서대로 → 마지막 칸 */
+function takeSec(pool, st, note){ const L = pool.list, used = st.used || (st.used = new Set()), match = (a, b) => a && b && (a.indexOf(b) >= 0 || b.indexOf(a) >= 0);
+  const free = f => L.findIndex((e, i) => !used.has(i) && f(e)); let i = -1;
+  if (note) { i = free(e => match(e.note, note)); if (i < 0) i = free(e => e.note); }
+  if (i < 0) i = free(e => !e.note);
+  if (i < 0 && !note && !L.some(e => !e.note)) i = free(() => true);
+  if (i < 0) { const plain = L.map((e, k) => k).filter(k => !L[k].note); i = plain.length ? plain[plain.length - 1] : L.length - 1; }
+  used.add(i); return L[i].body; }
 /* 송폼 순서대로 가사 틀 정리: 이미 적은 가사는 그대로 두고, 빈 부분만 칸을 만듦 (Intro·Inter는 (연주)) */
 function frameLyrics(form, text){ const names = formNames(form); if (!names.length) return null;
-  const { sec, order } = parseSections(text), keys = Object.keys(sec), used = new Set(), out = [], blk = k => (k ? '[' + k + ']\n' : '') + sec[k];
+  const P = parseSections(text), { sec, order } = P, keys = Object.keys(sec), used = new Set(), out = [], blk = k => (k ? '[' + k + ']\n' : '') + sec[k];
+  // 같은 칸을 여러 번 적은 가사(펼쳐 적은 가사)는 순서를 건드리지 않고 빠진 칸만 뒤에 붙임
+  if (P.seq.length > new Set(P.seq.map(s => s.key)).size) { const add = names.filter(n => !secPool(P, n) && !findSec(sec, n));
+    return add.length ? String(text || '').replace(/\s+$/, '') + '\n\n' + add.map(n => '[' + n + ']\n' + (INSTR.test(n) ? '(연주)' : '')).join('\n\n') + '\n' : String(text || ''); }
   names.forEach(n => { let k = keys.find(x => x.toLowerCase() === n.toLowerCase() && sec[x]);
     if (!k) { const f = findSec(sec, n); if (f) { if (!used.has(f)) { used.add(f); out.push(blk(f)); } return; } }
     if (k) { if (!used.has(k)) { used.add(k); out.push(blk(k)); } return; }
@@ -210,18 +240,21 @@ function frameLyrics(form, text){ const names = formNames(form); if (!names.leng
   order.filter(k => !used.has(k) && sec[k]).forEach(k => out.push(blk(k)));
   return out.join('\n\n').trim() + '\n'; }
 /* 송폼 순서대로 펼친 가사 (반복 ×2 는 가사도 두 번) */
-function expandLyrics(x){ const { sec, order } = parseSections(x.lyrics), items = formItems(x.form);
-  if (!items.length) return order.map(k => (k ? '[' + k + ']\n' : '') + sec[k]).join('\n\n').trim();
-  const out = []; let last = '';
-  items.forEach(it => { const isBis = /^bis$/i.test(it.name), isTag = /^tag$/i.test(it.name);
-    let k = findSec(sec, it.name), body = k ? sec[k] : '';
-    // Bis: [Bis] 칸이 없으면 바로 앞 부분의 마지막 줄을 반복
-    if (isBis && !body && last) body = last.split('\n').filter(l => l.trim()).slice(-1)[0] || '';
+function expandLyrics(x){ const P = parseSections(x.lyrics), { sec, order } = P, items = formItems(x.form);
+  if (!items.length) return P.seq.filter(s => s.key || s.body).map(s => (s.key ? '[' + s.key + ']\n' : '') + s.body).join('\n\n').trim();
+  const out = [], cnt = {}; let last = '';
+  items.forEach(it => { const isBis = /^bis$/i.test(it.name), isTag = /^tag$/i.test(it.name), instr = INSTR.test(it.name);
+    const pool = instr ? null : (secPool(P, it.name) || (it.tail ? secPool(P, it.tail) : null));
     for (let r = 1; r <= it.rep; r++) {
+      let body = '';
+      if (pool) body = takeSec(pool, cnt[pool.id] || (cnt[pool.id] = {}), noteKey(it.head.replace(/^[A-Za-z][A-Za-z'’\-]*\d*|^[가-힣]+\d*/, '').replace(/\)\s*[A-Za-z]\d*$/, ')')) || (it.tail ? noteKey(it.head) : ''));
+      else if (instr) { const k = findSec(sec, it.name); body = k && !/^\(?연주\)?$/.test(sec[k].trim()) ? sec[k] : ''; }
+      // Bis: [Bis] 칸이 없으면 바로 앞 부분의 마지막 줄을 반복
+      if (isBis && !body && last) body = last.split('\n').filter(l => l.trim()).slice(-1)[0] || '';
       const head = '[' + it.head + ']';
-      const wait = it.plus && !INSTR.test(it.name) ? '\n(' + it.plus + '마디 쉬고)' : '';
-      out.push((body ? head + '\n' + body : head + (INSTR.test(it.name) ? ' (연주)' : isTag ? ' (Tag 가사를 적어 주세요 — 삽입곡·따로 편곡한 부분)' : ' (가사를 적어 주세요)')) + wait); }
-    if (body && !INSTR.test(it.name) && !isBis) last = body; });
+      const wait = it.plus && !instr ? '\n(' + it.plus + '마디 쉬고)' : '';
+      out.push((body ? head + '\n' + body : head + (instr ? ' (연주)' : isTag ? ' (Tag 가사를 적어 주세요 — 삽입곡·따로 편곡한 부분)' : ' (가사를 적어 주세요)')) + wait);
+      if (body && !instr && !isBis) last = body; } });
   return out.join('\n\n'); }
 
 /* ── 잠금 ── */
@@ -364,6 +397,7 @@ async function songView(){
       (s.form ? '<div class="form"><b>송폼</b> ' + parseForm(s.form).map(f => '<span>' + esc(f) + '</span>').join('') + '</div>' : '') +
       (s.lyrics ? '<details><summary>가사 보기 (송폼 순서)</summary>' + (s.fromLib ? '<p class="small" style="margin:0 0 4px">📚 찬양팀 가사 보관함에서 가져왔어요. 고치려면 "정보 고치기".</p>' : '') + '<pre class="ly">' + esc(expandLyrics(s)) + '</pre><button class="tb" id="txo">📝 가사 TXT 받기</button></details>' : '') +
       (!s.memo && !s.form && !s.lyrics ? '<p class="small" style="margin:6px 0 0">메모·송폼·가사는 "정보 고치기"에서 적을 수 있어요.</p>' : '') + '</div>' +
+    '<p><button class="btn line wide" id="shr">📤 찬양팀 콘티로 보내기</button></p>' +
     '<h3 class="sec">버전 (' + vers.length + ')</h3><p><button class="btn wide" id="nv">＋ 새 버전 올리기 (악보·음원)</button></p>' +
     (vers.length ? vers.map(v => '<div class="ver"><div class="trow"><h4 style="flex:1">' + esc(v.name || '버전') + ' <span class="small">' + esc(v.date) + '</span></h4><button class="tb" data-ev="' + v.id + '">고치기</button></div>' +
       (v.memo ? '<div class="memo small" style="margin-top:4px">' + esc(v.memo) + '</div>' : '') +
@@ -377,6 +411,7 @@ async function songView(){
   document.getElementById('ed').onclick = () => editSong(s0);
   const txo = document.getElementById('txo'); if (txo) txo.onclick = () => saveTxt(s.title + ' 가사', songTxt(s));
   document.getElementById('nv').onclick = () => editVersion(s, null);
+  document.getElementById('shr').onclick = () => shareSong(s0);
   document.getElementById('rc').onclick = () => go({ tab: 'rec', songId: s.id });
   $app.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => editVersion(s, s.versions.find(v => v.id === b.dataset.ev)));
   $app.querySelectorAll('[data-score]').forEach(b => b.onclick = () => go({ tab: 'songs', name: 'score', song: s.id, ver: b.dataset.score }));
@@ -483,6 +518,45 @@ window.addEventListener('beforeunload', e => { if (REC && REC.state === 'recordi
 
 /* ── 팀 콘티 (읽기) ── */
 async function teamData(t, force){ if (!TEAM[t] || force) TEAM[t] = await api('teamData', t); return TEAM[t]; }
+/* ── 내 곡 → 찬양팀 콘티로 보내기 ── */
+function shareSong(s){
+  const vers = s.versions.filter(v => v.scores && v.scores.length).sort((a, b) => b.date.localeCompare(a.date));
+  const today = (() => { const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); })();
+  let team = LS.get('arr-team', 'hiel');
+  modal('<h3>찬양팀 콘티로 보내기</h3><p class="small" style="margin:0 0 6px">악보는 <b>복사본</b>이 찬양팀 폴더로 가요. 내 원본은 그대로 남아요.</p>' +
+    '<label class="f">팀</label><div class="teamsw" style="margin:0"><button class="hiel" data-st="hiel">히엘워십</button><button class="dwave" data-st="dwave">D-wave 워십</button></div>' +
+    '<label class="f" for="ss">콘티</label><select class="in" id="ss"><option>불러오는 중…</option></select>' +
+    '<div id="nsb" hidden><div class="row"><div><label class="f" for="nd">예배 날짜</label><input class="in" type="date" id="nd" value="' + today + '"></div><div><label class="f" for="nn">예배 이름</label><input class="in" id="nn" placeholder="예: 주일 2·3부 예배"></div></div></div>' +
+    '<label class="f" for="sv">보낼 악보</label><select class="in" id="sv">' + vers.map(v => '<option value="' + v.id + '">' + esc((v.name || '버전') + ' · ' + v.date + ' · 파일 ' + v.scores.length + '개') + '</option>').join('') + '<option value="">악보는 보내지 않기</option></select>' +
+    '<div class="row"><div style="flex:0 0 90px"><label class="f" for="sno">번호</label><input class="in" id="sno" inputmode="numeric" placeholder="자동"></div><div><label class="f" for="stt">곡 제목 (팀에 보일 이름)</label><input class="in" id="stt" value="' + esc(s.title) + '"></div></div>' +
+    '<label class="f" for="sds">곡 설명 (팀원에게 보일 안내)</label><textarea class="in" id="sds" placeholder="예: 인트로는 피아노만, 2절 후 빌드업">' + '</textarea>' +
+    (s.memo ? '<button class="tb" id="smm" style="margin-top:6px">내 메모 가져오기</button>' : '') +
+    '<label style="display:flex;gap:8px;align-items:center;margin-top:12px;min-height:40px"><input type="checkbox" id="swl"' + (s.form || s.lyrics ? ' checked' : ' disabled') + ' style="width:22px;height:22px">송폼·가사도 함께 보내기' + (s.form || s.lyrics ? '' : ' <span class="small">(적은 게 없어요)</span>') + '</label>' +
+    '<p class="err" id="se"></p><div class="row"><button class="btn line" id="sc">닫기</button><button class="btn" id="so">보내기</button></div>', m => {
+    const ss = m.querySelector('#ss'), nsb = m.querySelector('#nsb');
+    const load = async () => { m.querySelectorAll('[data-st]').forEach(b => b.classList.toggle('on', b.dataset.st === team)); ss.innerHTML = '<option>불러오는 중…</option>'; ss.disabled = true;
+      try { const d = await teamData(team, true), up = d.sets.filter(x => x.date >= today).sort((a, b) => a.date.localeCompare(b.date)), past = d.sets.filter(x => x.date < today).sort((a, b) => b.date.localeCompare(a.date));
+        const opt = x => '<option value="' + x.id + '">' + esc(dateText(x.date) + ' ' + x.name) + '</option>';
+        ss.innerHTML = '<option value="__new">＋ 새 콘티 만들기</option>' + (up.length ? '<optgroup label="다가오는 예배">' + up.map(opt).join('') + '</optgroup>' : '') + (past.length ? '<optgroup label="지난 예배">' + past.slice(0, 20).map(opt).join('') + '</optgroup>' : '');
+        ss.value = up.length ? up[0].id : '__new'; } catch(e){ ss.innerHTML = '<option value="__new">＋ 새 콘티 만들기</option>'; }
+      ss.disabled = false; nsb.hidden = ss.value !== '__new'; };
+    ss.onchange = () => { nsb.hidden = ss.value !== '__new'; };
+    m.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { team = b.dataset.st; LS.set('arr-team', team); load(); });
+    const mm = m.querySelector('#smm'); if (mm) mm.onclick = () => { const t = m.querySelector('#sds'); t.value = (t.value ? t.value + '\n' : '') + s.memo; };
+    m.querySelector('#sc').onclick = closeModal;
+    m.querySelector('#so').onclick = async ev => { const v = id => m.querySelector('#' + id).value, E = m.querySelector('#se'); E.textContent = '';
+      const isNew = ss.value === '__new'; if (isNew && (!v('nd') || !v('nn').trim())) return E.textContent = '새 콘티의 날짜와 예배 이름을 적어 주세요.';
+      if (!v('stt').trim()) return E.textContent = '곡 제목을 적어 주세요.';
+      const b = ev.target; b.disabled = true; b.textContent = '보내는 중…';
+      try { const r = await api('shareToTeam', team, { songId: s.id, verId: v('sv'), setId: isNew ? '' : ss.value, newSet: isNew ? { date: v('nd'), name: v('nn').trim() } : null,
+          title: v('stt').trim(), no: v('sno').trim(), desc: v('sds'), withLyrics: m.querySelector('#swl').checked });
+        TEAM[team] = null; closeModal();
+        modal('<h3>보냈어요 ✓</h3><p>' + esc(team === 'hiel' ? '히엘워십' : 'D-wave 워십') + ' 콘티에 「' + esc(v('stt') || s.title) + '」을(를) 넣었어요.' + (r.files ? ' 악보 파일 ' + r.files + '개도 함께 붙였어요.' : '') + '</p><p class="small">이미 그 콘티를 열어 둔 팀원은 새로고침하면 보여요.</p><div class="row"><button class="btn line" id="k1">닫기</button><button class="btn" id="k2">팀 콘티에서 보기</button></div>', m2 => {
+          m2.querySelector('#k1').onclick = closeModal; m2.querySelector('#k2').onclick = () => { closeModal(); go({ tab: 'team', team, set: r.setId }); }; });
+      } catch(e){ b.disabled = false; b.textContent = '보내기'; E.textContent = e.message || e; } };
+    load();
+  });
+}
 /* ── 달력: 내 곡·버전·녹음 + 두 팀 콘티 ── */
 async function calTab(){
   const now = new Date(), ym = view.ym || (now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'));
