@@ -30,7 +30,25 @@ header h1 img{width:34px;height:34px;border-radius:8px}
 header h1 small{display:block;font:400 13px/1.3 "Noto Sans KR",sans-serif;opacity:.75}
 .chip{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:99px;padding:6px 14px;min-height:40px;font-size:15px}
 main{padding:14px 0 90px}
-.tabs{display:flex;gap:8px;margin:0 0 14px}
+.tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:0 0 14px}
+@media (max-width:560px){.tabs{grid-template-columns:repeat(3,1fr);gap:6px}}
+a.tab{display:flex;align-items:center;justify-content:center;gap:5px;text-decoration:none}
+.tab.ext.suno{background:#16181D;border-color:#16181D;color:#fff}
+.tab.ext.yt{background:#fff;border-color:#E5322D;color:#C4231F}
+.tab.ext.yt span{color:#fff;background:#E5322D;border-radius:6px;font-size:11px;padding:2px 6px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .wd{text-align:center;font-size:13px;color:var(--sub);font-weight:700;padding:4px 0}
+.cday{min-height:64px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:4px;text-align:left;display:flex;flex-direction:column;gap:2px;font:inherit;color:var(--ink);overflow:hidden}
+.cday .dn{font-size:14px;font-weight:700}
+.cday.sun .dn{color:#C4231F}.cday.sat .dn{color:#1F5FD1}
+.cday.today{border:2px solid var(--brass)}.cday.sel{background:#F3EEDD;border-color:var(--ink)}
+.cday .dots{display:flex;flex-wrap:wrap;gap:3px}
+.cday .dots i{width:8px;height:8px;border-radius:50%;display:block}
+.dt-song{background:#B08A3E}.dt-rec{background:#D0262F}.dt-hiel{background:#5B4B3A}.dt-dwave{background:#1F7A8C}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:14px;color:var(--sub);margin:10px 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.ev{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;font:inherit;color:var(--ink);min-height:52px}
+.ev i{width:10px;height:10px;border-radius:50%;flex:none}.ev .k{font-size:14px;color:var(--sub)}
 .tab{flex:1;min-height:50px;border:2px solid var(--line);background:#fff;border-radius:12px;font-weight:700;color:var(--sub)}
 .tab.on{border-color:var(--ink);color:var(--ink);box-shadow:inset 0 -4px 0 var(--brass)}
 .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
@@ -255,7 +273,10 @@ document.getElementById('lockBtn').onclick = () => { PW = ''; LS.set('arr-pw', n
 
 async function start(){ document.getElementById('lockBtn').hidden = false; render(); }
 function go(v){ if (view.name === 'score') leaveScore(); if (REC && REC.state === 'recording' && v.tab !== 'rec') { toast('녹음 중이에요. 먼저 멈춰 주세요'); return; } view = v; render(); window.scrollTo(0, 0); }
-function tabs(){ return '<div class="tabs">' + [['songs','내 곡'],['rec','녹음'],['team','팀 콘티']].map(([k, n]) => '<button class="tab' + (view.tab === k && !view.name ? ' on' : '') + '" data-tab="' + k + '">' + n + '</button>').join('') + '</div>'; }
+/* ✏️ 바로가기 주소 */
+const LINKS = { suno: 'https://suno.com/create', youtube: 'https://www.youtube.com/' };
+function tabs(){ return '<div class="tabs">' + [['songs','내 곡'],['rec','녹음'],['team','팀 콘티'],['cal','달력']].map(([k, n]) => '<button class="tab' + (view.tab === k && !view.name ? ' on' : '') + '" data-tab="' + k + '">' + n + '</button>').join('') +
+  '<a class="tab ext suno" href="' + LINKS.suno + '" target="_blank" rel="noopener">Suno ↗</a><a class="tab ext yt" href="' + LINKS.youtube + '" target="_blank" rel="noopener"><span aria-hidden="true">▶</span> YouTube</a></div>'; }
 function bindTabs(){ $app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go({ tab: b.dataset.tab })); }
 async function render(){
   if (!PW) return lockScreen();
@@ -265,6 +286,7 @@ async function render(){
     if (view.name === 'teamset') return await teamSetView();
     if (view.tab === 'rec') return await recTab();
     if (view.tab === 'team') return await teamTab();
+    if (view.tab === 'cal') return await calTab();
     return await songsTab();
   } catch(e){ if (!PW) return lockScreen(e.message); $app.innerHTML = tabs() + '<p class="err">' + esc(e.message) + '</p><button class="btn line" id="rt">다시 시도</button>'; bindTabs(); document.getElementById('rt').onclick = render; }
 }
@@ -461,13 +483,42 @@ window.addEventListener('beforeunload', e => { if (REC && REC.state === 'recordi
 
 /* ── 팀 콘티 (읽기) ── */
 async function teamData(t, force){ if (!TEAM[t] || force) TEAM[t] = await api('teamData', t); return TEAM[t]; }
+/* ── 달력: 내 곡·버전·녹음 + 두 팀 콘티 ── */
+async function calTab(){
+  const now = new Date(), ym = view.ym || (now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'));
+  $app.innerHTML = tabs() + '<div class="loading">불러오는 중…</div>'; bindTabs();
+  await Promise.all([loadSongs(), loadRecs()]);
+  const td = {}; await Promise.all(['hiel', 'dwave'].map(async t => { try { td[t] = await teamData(t); } catch(e){ td[t] = { sets: [] }; } }));
+  if (view.tab !== 'cal' || view.name) return;
+  const ev = [], d10 = x => String(x || '').slice(0, 10);
+  SONGS.forEach(s => { if (s.created) ev.push({ d: d10(s.created), c: 'song', k: '새 곡', t: s.title, go: { tab: 'songs', name: 'song', id: s.id } });
+    s.versions.forEach(v => ev.push({ d: d10(v.date), c: 'song', k: '버전', t: s.title + (v.name ? ' · ' + v.name : ''), go: { tab: 'songs', name: 'song', id: s.id } })); });
+  RECS.forEach(r => { const s = SONGS.find(x => x.id === r.songId); ev.push({ d: d10(r.date), c: 'rec', k: '녹음', t: (r.name || '녹음') + (s ? ' · ' + s.title : ''), go: s ? { tab: 'songs', name: 'song', id: s.id } : { tab: 'rec' } }); });
+  [['hiel', '히엘워십'], ['dwave', 'D-wave']].forEach(([t, n]) => (td[t].sets || []).forEach(x => ev.push({ d: d10(x.date), c: t, k: n, t: x.name || '콘티', go: { tab: 'team', team: t, set: x.id } })));
+  const [Y, M] = ym.split('-').map(Number), first = new Date(Y, M - 1, 1).getDay(), days = new Date(Y, M, 0).getDate(), pad = n => String(n).padStart(2, '0');
+  const today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()), mv = k => { const d = new Date(Y, M - 1 + k, 1); view.ym = d.getFullYear() + '-' + pad(d.getMonth() + 1); view.day = ''; calTab(); };
+  let h = '<div class="bar" style="margin-bottom:8px"><button class="tb" id="pm" aria-label="지난달">◀</button><h2 style="flex:1;text-align:center;margin:0">' + Y + '년 ' + M + '월</h2><button class="tb" id="nm" aria-label="다음달">▶</button><button class="tb" id="tdy">오늘</button></div>' +
+    '<div class="cal">' + DAYS.map(w => '<div class="wd">' + w + '</div>').join('') + '<div></div>'.repeat(first);
+  for (let d = 1; d <= days; d++) { const ds = ym + '-' + pad(d), L = ev.filter(e => e.d === ds), wd = (first + d - 1) % 7, kinds = [...new Set(L.map(e => e.c))];
+    h += '<button class="cday' + (ds === today ? ' today' : '') + (view.day === ds ? ' sel' : '') + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '') + '" data-day="' + ds + '" aria-label="' + M + '월 ' + d + '일 ' + L.length + '건"><span class="dn">' + d + '</span><span class="dots">' + kinds.map(c => '<i class="dt-' + c + '"></i>').join('') + '</span></button>'; }
+  h += '</div><div class="legend"><span><i class="dt-song"></i>내 곡·버전</span><span><i class="dt-rec"></i>녹음</span><span><i class="dt-hiel"></i>히엘워십 콘티</span><span><i class="dt-dwave"></i>D-wave 콘티</span></div>';
+  const list = ev.filter(e => view.day ? e.d === view.day : e.d.slice(0, 7) === ym).sort((a, b) => a.d.localeCompare(b.d));
+  h += '<h3 class="sec">' + (view.day ? esc(dateText(view.day)) : M + '월 전체') + (view.day ? ' <button class="tb" id="all">' + M + '월 전체 보기</button>' : '') + '</h3>' +
+    (list.length ? list.map((e, i) => '<button class="ev" data-ev="' + i + '"><i class="dt-' + e.c + '"></i><span style="flex:1"><span class="k">' + esc(view.day ? e.k : dateText(e.d) + ' · ' + e.k) + '</span><br><b>' + esc(e.t) + '</b></span>›</button>').join('') : '<div class="empty">' + (view.day ? '이날은 기록이 없어요.' : '이 달에는 기록이 없어요.') + '</div>');
+  $app.innerHTML = tabs() + h; bindTabs();
+  document.getElementById('pm').onclick = () => mv(-1); document.getElementById('nm').onclick = () => mv(1);
+  document.getElementById('tdy').onclick = () => { view.ym = ''; view.day = today; calTab(); };
+  const al = document.getElementById('all'); if (al) al.onclick = () => { view.day = ''; calTab(); };
+  $app.querySelectorAll('[data-day]').forEach(b => b.onclick = () => { view.day = view.day === b.dataset.day ? '' : b.dataset.day; calTab(); });
+  $app.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => { const e = list[+b.dataset.ev]; if (e.c === 'hiel' || e.c === 'dwave') LS.set('arr-team', e.c); go(Object.assign({}, e.go)); });
+}
 /* 팀 콘티: 찬양팀 악보 앱 화면을 그대로 보여 줌 (악보·필기·레퍼런스·가사 모두 같은 모습) */
 const TEAM_APP = 'https://script.google.com/macros/s/AKfycbx_ylenPtjX6abUs4R5IPOyEAsIb8biF0-IMgFPVlJjLKylK_YgRCU0dIQed1ibJCO08g/exec';
 async function teamTab(){
   const t = view.team || LS.get('arr-team', 'hiel');
   $app.innerHTML = tabs() + '<div class="teamsw"><button class="hiel' + (t === 'hiel' ? ' on' : '') + '" data-team="hiel">히엘워십</button><button class="dwave' + (t === 'dwave' ? ' on' : '') + '" data-team="dwave">D-wave 워십</button>' +
     '<a class="tb" style="margin-left:auto;text-decoration:none;display:inline-flex;align-items:center" href="' + TEAM_APP + '?team=' + t + '" target="_blank" rel="noopener">새 창 ↗</a></div>' +
-    '<iframe class="teamfr" src="' + TEAM_APP + '?team=' + t + '" title="찬양팀 악보 앱" allow="clipboard-write; fullscreen; autoplay; encrypted-media; picture-in-picture"></iframe>';
+    '<iframe class="teamfr" src="' + TEAM_APP + '?team=' + t + (view.set ? '&set=' + encodeURIComponent(view.set) : '') + '" title="찬양팀 악보 앱" allow="clipboard-write; fullscreen; autoplay; encrypted-media; picture-in-picture"></iframe>';
   bindTabs(); $app.querySelectorAll('[data-team]').forEach(b => b.onclick = () => { LS.set('arr-team', b.dataset.team); go({ tab: 'team', team: b.dataset.team }); });
 }
 async function teamSetView(){
