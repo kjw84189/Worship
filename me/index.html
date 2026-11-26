@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>편곡 노트</title>
+<meta name="apple-mobile-web-app-title" content="편곡 노트">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1D2B2A">
+<meta name="robots" content="noindex">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600&display=swap" rel="stylesheet">
+<style>
+/* ── 색 ── 깊은 녹흑: 머리 띠 / 황동색: 지금 고른 것·녹음 / 회녹 종이: 바탕 */
+:root{--ink:#1D2B2A;--ink2:#2E4442;--brass:#C9A24A;--rec:#D23B3B;--text:#1B2120;--sub:#56625F;--line:#D5DBD8;--bg:#EDF0EE;--paper:#fff;--blue:#1F5FD1}
+*{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:17px/1.65 "Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;word-break:keep-all;overflow-wrap:anywhere}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px}
+header.top{background:var(--ink);color:#fff;padding:12px 0;padding-top:max(12px,env(safe-area-inset-top))}
+header.top .wrap{display:flex;align-items:center;gap:12px}
+header h1{margin:0;font:600 21px/1.3 "Noto Serif KR",serif;flex:1;display:flex;align-items:center;gap:10px}
+header h1 img{width:34px;height:34px;border-radius:8px}
+header h1 small{display:block;font:400 13px/1.3 "Noto Sans KR",sans-serif;opacity:.75}
+.chip{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:99px;padding:6px 14px;min-height:40px;font-size:15px}
+main{padding:14px 0 90px}
+.tabs{display:flex;gap:8px;margin:0 0 14px}
+.tab{flex:1;min-height:50px;border:2px solid var(--line);background:#fff;border-radius:12px;font-weight:700;color:var(--sub)}
+.tab.on{border-color:var(--ink);color:var(--ink);box-shadow:inset 0 -4px 0 var(--brass)}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+.list{display:flex;flex-direction:column;gap:10px}
+.item{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.item:hover{border-color:var(--ink)}
+.item b{font-size:19px}
+.item .m{color:var(--sub);font-size:15px}
+.kind{display:inline-block;font-size:13px;font-weight:700;border-radius:99px;padding:1px 10px;margin-left:6px;vertical-align:2px;background:#E7EEEC;color:var(--ink2)}
+.kind.작곡{background:#F3EAD3;color:#6B5212}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:10px 18px;border-radius:12px;border:0;font-weight:700;background:var(--ink);color:#fff;text-decoration:none}
+.btn.line{background:#fff;color:var(--ink);border:2px solid var(--ink)}
+.btn.red{background:var(--rec)}
+.btn.wide{width:100%}
+.btn[disabled]{opacity:.5;cursor:wait}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1}
+.trow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tb{min-width:44px;min-height:44px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:4px 12px;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.tb.on{border:2px solid var(--ink);box-shadow:inset 0 -3px 0 var(--brass);font-weight:700}
+.small{font-size:14px;color:var(--sub)}
+.err{color:var(--rec);font-weight:700}
+.empty{padding:36px 10px;text-align:center;color:var(--sub)}
+.loading{padding:36px 0;text-align:center;color:var(--sub)}
+.search{width:100%;min-height:50px;border:2px solid var(--line);border-radius:12px;padding:8px 14px;background:#fff;margin-bottom:12px}
+.bar{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bar{flex-wrap:wrap}.bar h2{margin:0;font-size:21px;flex:1 1 180px;line-height:1.35}
+.back{background:none;border:0;color:var(--ink);font-weight:700;min-height:44px;padding:0}
+h3.sec{font-size:18px;margin:24px 0 10px}
+label.f{display:block;font-weight:700;margin:12px 0 6px}
+.in{width:100%;min-height:48px;border:2px solid var(--line);border-radius:12px;padding:9px 12px;background:#fff}
+textarea.in{min-height:90px;resize:vertical;line-height:1.55}
+.ver{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.ver h4{margin:0;font-size:18px}
+.files{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.file{display:flex;flex-wrap:wrap;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:#FAFBFA}
+.file .n{flex:1 1 160px;font-size:15px}
+.file audio{width:100%;margin-top:6px}
+.audiowrap{flex-basis:100%}
+pre.ly{white-space:pre-wrap;font:inherit;line-height:1.8;background:var(--bg);border-radius:10px;padding:12px;margin:8px 0 0}
+.form{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;align-items:center}
+.form span{border:1px solid var(--line);border-radius:8px;padding:1px 8px;background:#fff;font-weight:700;color:var(--ink)}
+.memo{white-space:pre-wrap}
+/* 녹음 */
+.recbox{text-align:center;padding:26px 10px 20px}
+.recbtn{width:132px;height:132px;border-radius:50%;border:6px solid #fff;background:var(--rec);box-shadow:0 0 0 2px var(--rec);color:#fff;font-size:18px;font-weight:700}
+.recbtn.on{border-radius:28%;background:#7a1f1f;box-shadow:0 0 0 2px #7a1f1f}
+.timer{font:600 38px/1.2 ui-monospace,Menlo,Consolas,monospace;margin:14px 0 4px;color:var(--ink)}
+.meter{height:10px;background:#dfe4e2;border-radius:99px;overflow:hidden;max-width:360px;margin:10px auto 0}
+.meter i{display:block;height:100%;width:0;background:var(--brass);transition:width .08s}
+/* 악보·필기 */
+.tools{position:sticky;top:0;z-index:20;background:rgba(237,240,238,.96);backdrop-filter:blur(6px);margin:0 -16px 10px;padding:8px 16px;border-bottom:1px solid var(--line)}
+.dot{width:20px;height:20px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px #9aa}
+.pages{display:flex;flex-direction:column;gap:14px}
+.pg{position:relative;background:#fff;box-shadow:0 1px 4px rgba(20,30,30,.15);border-radius:4px;overflow:hidden}
+.pg .sc{display:block;width:100%;height:auto}
+.pg canvas.ink{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.drawing .pg canvas.ink{pointer-events:auto;touch-action:none}
+.drawing.penonly .pg canvas.ink{touch-action:pan-x pan-y}
+.pgno{position:absolute;right:8px;bottom:6px;font-size:12px;color:#8a93a3;background:rgba(255,255,255,.85);border-radius:6px;padding:0 6px}
+.save{font-size:13px;color:var(--sub);margin-left:auto}
+.modal{position:fixed;inset:0;background:rgba(15,25,25,.55);z-index:50;display:grid;place-items:center;padding:16px;overflow:auto}
+.modal .card{width:min(520px,100%)}
+.modal h3{margin:0 0 6px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;z-index:60;font-size:15px}
+.teamsw{display:flex;gap:8px;margin-bottom:12px}
+.teamsw button{flex:1;min-height:46px;border-radius:12px;border:2px solid var(--line);background:#fff;font-weight:700}
+.teamsw button.on.hiel{background:#5B4B3A;color:#fff;border-color:#5B4B3A}
+.teamsw button.on.dwave{background:#1B2A45;color:#fff;border-color:#1B2A45}
+.month{font-size:16px;color:var(--ink);margin:18px 0 8px;padding-bottom:4px;border-bottom:2px solid var(--line)}
+.song{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.song h4{margin:0 0 4px;font-size:18px}
+.song .no{display:inline-block;min-width:30px;background:var(--ink);color:#fff;border-radius:8px;text-align:center;font-size:14px;padding:0 7px;margin-right:6px}
+details summary{cursor:pointer;font-weight:700;color:var(--ink);min-height:40px;display:flex;align-items:center}
+.lock{max-width:380px;margin:60px auto}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <h1><img src="icon-192.png" alt=""><span>편곡 노트<small>곽지웅 · 작곡·편곡 작업실</small></span></h1>
+  <button class="chip" id="lockBtn" hidden>잠그기</button>
+</div></header>
+<main class="wrap" id="app"><div class="loading">여는 중…</div></main>
+<div id="modalRoot"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function(){
+/* ✏️ 서버 주소 (Apps Script 배포 주소) */
+const API_URL = 'https://script.google.com/macros/s/AKfycbxk7qM6FzQyV_Czc4-XtQDc1AiAAgVwdRpDp28_4f-Mp7nNwzXmkVs_gx3_r7INpswm6Q/exec';
+
+const $app = document.getElementById('app'), $modal = document.getElementById('modalRoot');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LS = { get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } }, set(k, v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch(e){} } };
+let PW = LS.get('arr-pw', ''), view = { tab: 'songs' }, SONGS = null, RECS = null, TEAM = {}, songOpts = [], LIB = null;
+const DAYS = ['일','월','화','수','목','금','토'];
+function toast(m){ const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2400); }
+function nowStr(){ const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+function dateText(d){ const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(d || ''); if (!m) return d || ''; const dt = new Date(+m[1], +m[2] - 1, +m[3]); return (+m[2]) + '월 ' + (+m[3]) + '일 (' + DAYS[dt.getDay()] + ')'; }
+function fmtSec(s){ s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function sizeText(b){ return b > 1048576 ? (b / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(b / 1024)) + 'KB'; }
+
+async function api(fn, ...args){
+  if (window.DEMO_API) return window.DEMO_API(PW, fn, args);
+  if (!API_URL || API_URL.indexOf('__') === 0) throw new Error('서버 주소가 아직 없어요');
+  const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ pw: PW, fn, args }) });
+  const j = await r.json();
+  if (!j.ok) { if (/비밀번호/.test(j.error)) { PW = ''; LS.set('arr-pw', null); } throw new Error(j.error); }
+  return j.data;
+}
+function readFile(f){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res({ name: f.name, mime: f.type || 'application/octet-stream', b64: String(r.result).split(',')[1] }); r.onerror = rej; r.readAsDataURL(f); }); }
+function b64bytes(b){ const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+const FILECACHE = {};
+async function fileURL(fid){ if (FILECACHE[fid]) return FILECACHE[fid]; const f = await api('getFile', fid); const u = { url: URL.createObjectURL(new Blob([b64bytes(f.b64)], { type: f.mime })), mime: f.mime, b64: f.b64, name: f.name }; FILECACHE[fid] = u; return u; }
+function modal(html, on){ $modal.innerHTML = '<div class="modal" role="dialog" aria-modal="true"><div class="card">' + html + '</div></div>'; const m = $modal.firstChild; on && on(m); const f = m.querySelector('input:not([type=file]),textarea'); f && f.focus(); return m; }
+function closeModal(){ $modal.innerHTML = ''; }
+
+/* 송폼 가사 */
+/* ── 송폼 규칙 ──
+   A1·A2 = A파트 1절·2절, B1·B2 = 후렴 1절·2절 (각자 가사)
+   송폼은 적은 그대로 표시 · I(8) = Intro 8마디 · A1(+2) = 2마디 쉬고 · Bx2 = 두 번 반복 · Bis = 끝부분 반복(Bisx3 = 세 번) · Tag = 삽입곡·따로 편곡한 부분 = B 두 번 반복(가사도 두 번)
+   I/In=Intro, It/Int=Inter, O/Out=Outro, Ed/End=Ending 으로 읽음 */
+const INSTR = /^[\(\[]?\s*(intro|inter|interlude|outro|ending|solo|간주|전주|후주|인트로|인터|아웃트로|엔딩|솔로|기도|멘트)/i;
+const ABBR = [[/^(i|in|intro)$/i, 'Intro'], [/^(it|int|inter|interlude)$/i, 'Inter'], [/^(o|out|outro)$/i, 'Outro'], [/^(ed|end|ending)$/i, 'Ending']];
+function formItems(f){ const out = [];
+  String(f || '').split(/[\/|→\n]+/).map(t => t.trim()).filter(Boolean).forEach(t => {
+    let rep = 1, bars = 0, m; const label = t.replace(/\s+/g, ' ');
+    if ((m = /\s*[x×*]\s*(\d+)\s*$/i.exec(t))) { rep = Math.min(9, +m[1] || 1); t = t.slice(0, m.index); }
+    const head = t.trim().replace(/\s+/g, ' ');
+    m = /^\s*([A-Za-z][A-Za-z'’\-]*\d*|[가-힣]+\d*)\s*(.*)$/.exec(t) || /^\s*([^\(\[]*?)\s*([\(\[].*)?$/.exec(t) || [t, t.trim(), ''];
+    m[2] = m[2] || '';
+    if (!m[1]) { m[1] = t.trim(); m[2] = ''; } if (!m[1]) return;
+    let name = m[1], extra = m[2].replace(/\s+/g, ' ').replace(/\s*([\(\)\[\]+])\s*/g, '$1').trim();
+    ABBR.forEach(([re, full]) => { if (re.test(name)) name = full; });
+    const b = /^[\(\[]?(\d+)(?:마디)?[\)\]]?$/.exec(extra); if (b) { bars = +b[1]; extra = ''; }
+    const pm = /\+\s*(\d+)/.exec(extra), plus = pm ? +pm[1] : 0;
+    out.push({ name, bars, plus, rep, head, label }); });
+  return out; }
+function parseForm(f){ return formItems(f).map(i => i.label); }
+function formNames(f){ const all = [...new Set(formItems(f).map(i => i.name))];
+  return all.filter(n => !(/^\D+$/.test(n) && all.some(o => o !== n && o.toLowerCase().startsWith(n.toLowerCase()) && /^\d+$/.test(o.slice(n.length))))); }
+function hasSec(sec, n){ return Object.keys(sec).some(k => k.toLowerCase() === n.toLowerCase()); }
+function parseSections(text){ const sec = {}, order = []; let cur = null;
+  String(text || '').replace(/\r/g, '').split('\n').forEach(l => { const m = /^\s*\[(.+?)\]\s*$/.exec(l);
+    if (m) { cur = m[1].replace(/\s*[\(\[].*$/, '').trim() || m[1].trim(); if (!(cur in sec)) { sec[cur] = []; order.push(cur); } }
+    else { if (cur === null) { cur = ''; sec[''] = []; order.push(''); } sec[cur].push(l); } });
+  Object.keys(sec).forEach(k => sec[k] = sec[k].join('\n').replace(/^\n+|\s+$/g, ''));
+  return { sec, order }; }
+/* 가사 찾기: 같은 이름 → (A2에 가사가 없으면) A → (A만 있고 A1에 가사가 있으면) A1 */
+function findSec(sec, name){ const keys = Object.keys(sec), low = name.toLowerCase(), hit = n => keys.find(k => k.toLowerCase() === n && sec[k]);
+  return hit(low) || hit(low.replace(/\d+$/, '')) || (/\d$/.test(low) ? null : hit(low + '1')) || null; }
+/* 송폼 순서대로 가사 틀 정리: 이미 적은 가사는 그대로 두고, 빈 부분만 칸을 만듦 (Intro·Inter는 (연주)) */
+function frameLyrics(form, text){ const names = formNames(form); if (!names.length) return null;
+  const { sec, order } = parseSections(text), keys = Object.keys(sec), used = new Set(), out = [], blk = k => (k ? '[' + k + ']\n' : '') + sec[k];
+  names.forEach(n => { let k = keys.find(x => x.toLowerCase() === n.toLowerCase() && sec[x]);
+    if (!k) { const f = findSec(sec, n); if (f) { if (!used.has(f)) { used.add(f); out.push(blk(f)); } return; } }
+    if (k) { if (!used.has(k)) { used.add(k); out.push(blk(k)); } return; }
+    out.push('[' + n + ']\n' + (INSTR.test(n) ? '(연주)' : '')); });
+  order.filter(k => !used.has(k) && sec[k]).forEach(k => out.push(blk(k)));
+  return out.join('\n\n').trim() + '\n'; }
+/* 송폼 순서대로 펼친 가사 (반복 ×2 는 가사도 두 번) */
+function expandLyrics(x){ const { sec, order } = parseSections(x.lyrics), items = formItems(x.form);
+  if (!items.length) return order.map(k => (k ? '[' + k + ']\n' : '') + sec[k]).join('\n\n').trim();
+  const out = []; let last = '';
+  items.forEach(it => { const isBis = /^bis$/i.test(it.name), isTag = /^tag$/i.test(it.name);
+    let k = findSec(sec, it.name), body = k ? sec[k] : '';
+    // Bis: [Bis] 칸이 없으면 바로 앞 부분의 마지막 줄을 반복
+    if (isBis && !body && last) body = last.split('\n').filter(l => l.trim()).slice(-1)[0] || '';
+    for (let r = 1; r <= it.rep; r++) {
+      const head = '[' + it.head + ']';
+      const wait = it.plus && !INSTR.test(it.name) ? '\n(' + it.plus + '마디 쉬고)' : '';
+      out.push((body ? head + '\n' + body : head + (INSTR.test(it.name) ? ' (연주)' : isTag ? ' (Tag 가사를 적어 주세요 — 삽입곡·따로 편곡한 부분)' : ' (가사를 적어 주세요)')) + wait); }
+    if (body && !INSTR.test(it.name) && !isBis) last = body; });
+  return out.join('\n\n'); }
+
+/* ── 잠금 ── */
+
+/* 찬양팀 가사 보관함: 제목이 같은 곡은 가사를 자동으로 씀 (내가 적은 가사가 있으면 그게 먼저) */
+async function loadLib(force){ if (!LIB || force) { try { LIB = await api('library'); } catch(e){ LIB = LIB || []; } } return LIB; }
+function libKey(t){ return String(t || '').toLowerCase().replace(/\s+/g, '').replace(/[^\w가-힣]/g, ''); }
+function libFind(title){ const L = LIB || []; if (!title) return null; const k = libKey(title), k2 = libKey(String(title).replace(/\(.*?\)|\[.*?\]/g, ''));
+  return L.find(x => x.key === k) || (k2 && (L.find(x => x.key === k2) || L.find(x => libKey(x.title.replace(/\(.*?\)|\[.*?\]/g, '')) === k2))) || null; }
+function eff(x){ if (!x || x.lyrics) return x; const L = libFind(x.title); return L ? Object.assign({}, x, { lyrics: L.lyrics, form: x.form || L.form, fromLib: true }) : x; }
+/* 가사 TXT 내려받기 */
+function songTxt(x){ return (x.title || '') + (x.form ? '\n송폼: ' + x.form : '') + '\n\n' + expandLyrics(x); }
+function saveTxt(name, text){ const u = URL.createObjectURL(new Blob(['﻿' + text.replace(/\n/g, '\r\n')], { type: 'text/plain;charset=utf-8' })); saveBlobURL(u, name.replace(/[\\/:*?"<>|]/g, '_') + '.txt'); setTimeout(() => URL.revokeObjectURL(u), 4000); }
+async function readTxt(f){ const buf = await f.arrayBuffer(); try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch(e){ try { return new TextDecoder('euc-kr').decode(buf); } catch(e2){ return new TextDecoder().decode(buf); } } }
+function parseTxt(text, fname){
+  text = String(text || '').replace(/^\ufeff/, '').replace(/\r\n?/g, '\n');
+  const SEP = /^\s*(━{3,}|={3,}|-{3,}|\*{3,}|_{3,})\s*$/, TITLE = /^\s*(?:제목\s*[:：]|#+\s*)\s*(.+)$/;
+  const blocks = []; let cur = [];
+  text.split('\n').forEach(l => { if (SEP.test(l)) { blocks.push(cur); cur = []; } else if (TITLE.test(l) && cur.some(x => x.trim())) { blocks.push(cur); cur = [l]; } else cur.push(l); });
+  blocks.push(cur);
+  const base = String(fname || '').replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim();
+  const out = [];
+  blocks.forEach(b => { const lines = b.slice(); while (lines.length && !lines[0].trim()) lines.shift();
+    if (!lines.length) return;
+    let title = '', form = '';
+    if (!/^\s*\[/.test(lines[0])) { const m = TITLE.exec(lines[0]); title = (m ? m[1] : lines[0]).replace(/^\s*\d+(?:\s*[-~,]\s*\d+)*\s*[.)]\s*/, '').trim(); lines.shift(); }
+    const rest = []; lines.forEach(l => { const m = /^\s*송폼\s*[:：]\s*(.*)$/.exec(l); if (m) form = m[1].trim(); else rest.push(l); });
+    // 내보낸 가사(펼친 송폼)를 다시 올린 경우: [B · 2/2] → [B], 같은 부분은 한 번만, 빈 부분은 뺌
+    const seen = {}, body = []; let skip = false;
+    rest.forEach(l => { const h = /^\s*\[(.+?)\]\s*(.*)$/.exec(l);
+      if (h) { const name = h[1].split('·')[0].replace(/\s*[\(\[].*$/, '').trim(); skip = !!seen[name.toLowerCase()] || /가사 없음|가사를 적어|^\(연주\)/.test(h[2]); if (!skip) { seen[name.toLowerCase()] = 1; body.push('[' + name + ']'); } }
+      else if (!skip && !/^\s*\(\d+마디 쉬고\)\s*$/.test(l)) body.push(l); });
+    const lyrics = body.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    if (!lyrics) return;
+    out.push({ title: title || base || '제목 없음', form, lyrics }); });
+  if (out.length === 1 && !out[0].title && base) out[0].title = base;
+  return out;
+}
+function lockScreen(msg){
+  document.getElementById('lockBtn').hidden = true;
+  $app.innerHTML = '<div class="card lock"><h2 style="margin:0 0 6px">편곡 노트</h2><p class="small" style="margin:0">목사님만 여는 작업실이에요. 비밀번호를 넣어 주세요.</p>' +
+    '<label class="f" for="pw">비밀번호</label><input class="in" id="pw" type="password" inputmode="numeric" autocomplete="current-password"><p class="err" id="pe">' + esc(msg || '') + '</p>' +
+    '<button class="btn wide" id="go">열기</button><p class="small" style="margin-top:10px">이 기기에서는 다음부터 자동으로 열려요. 다른 사람과 함께 쓰는 기기라면 다 쓰고 <b>잠그기</b>를 눌러 주세요.</p></div>';
+  const go = async () => { PW = document.getElementById('pw').value.trim(); if (!PW) return; const b = document.getElementById('go'); b.disabled = true; b.textContent = '확인하는 중…';
+    try { await api('ping'); LS.set('arr-pw', PW); start(); } catch(e){ PW = ''; b.disabled = false; b.textContent = '열기'; document.getElementById('pe').textContent = e.message; } };
+  document.getElementById('go').onclick = go; document.getElementById('pw').onkeydown = e => { if (e.key === 'Enter') go(); };
+}
+document.getElementById('lockBtn').onclick = () => { PW = ''; LS.set('arr-pw', null); SONGS = RECS = null; TEAM = {}; Object.values(FILECACHE).forEach(f => URL.revokeObjectURL(f.url)); for (const k in FILECACHE) delete FILECACHE[k]; lockScreen('잠갔어요.'); };
+
+async function start(){ document.getElementById('lockBtn').hidden = false; render(); }
+function go(v){ if (view.name === 'score') leaveScore(); if (REC && REC.state === 'recording' && v.tab !== 'rec') { toast('녹음 중이에요. 먼저 멈춰 주세요'); return; } view = v; render(); window.scrollTo(0, 0); }
+function tabs(){ return '<div class="tabs">' + [['songs','내 곡'],['rec','녹음'],['team','팀 콘티']].map(([k, n]) => '<button class="tab' + (view.tab === k && !view.name ? ' on' : '') + '" data-tab="' + k + '">' + n + '</button>').join('') + '</div>'; }
+function bindTabs(){ $app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go({ tab: b.dataset.tab })); }
+async function render(){
+  if (!PW) return lockScreen();
+  try {
+    if (view.name === 'song') return await songView();
+    if (view.name === 'score') return await scoreView();
+    if (view.name === 'teamset') return await teamSetView();
+    if (view.tab === 'rec') return await recTab();
+    if (view.tab === 'team') return await teamTab();
+    return await songsTab();
+  } catch(e){ if (!PW) return lockScreen(e.message); $app.innerHTML = tabs() + '<p class="err">' + esc(e.message) + '</p><button class="btn line" id="rt">다시 시도</button>'; bindTabs(); document.getElementById('rt').onclick = render; }
+}
+async function loadSongs(force){ if (!SONGS || force) SONGS = await api('listSongs'); songOpts = SONGS.map(s => ({ id: s.id, title: s.title })); return SONGS; }
+async function loadRecs(force){ if (!RECS || force) RECS = await api('listRecs'); return RECS; }
+
+/* ── 내 곡 ── */
+async function songsTab(){
+  if (!SONGS) $app.innerHTML = tabs() + '<div class="loading">불러오는 중…</div>', bindTabs();
+  await loadSongs();
+  const q = (view.q || '').replace(/\s/g, ''), kind = view.kind || '';
+  const list = SONGS.filter(s => (!q || s.title.replace(/\s/g, '').includes(q)) && (!kind || s.kind === kind));
+  $app.innerHTML = tabs() + '<p><button class="btn wide" id="newSong">＋ 새 곡 만들기</button></p><p style="margin-top:-4px"><button class="btn line wide" id="txtIn">📄 TXT 가사 올리기 (여러 곡 한꺼번에)</button></p><input type="file" id="txtF" accept=".txt,text/plain" multiple hidden>' +
+    '<input class="search" id="q" type="search" placeholder="곡 제목으로 찾기" value="' + esc(view.q || '') + '">' +
+    '<div class="trow" style="margin:-4px 0 12px">' + [['', '전체'], ['작곡', '작곡'], ['편곡', '편곡']].map(([k, n]) => '<button class="tb' + (kind === k ? ' on' : '') + '" data-kind="' + k + '">' + n + '</button>').join('') + '</div>' +
+    (list.length ? '<div class="list">' + list.map(s => '<button class="item" data-song="' + s.id + '"><b>' + esc(s.title || '(제목 없음)') + '</b>' + (s.kind ? '<span class="kind ' + esc(s.kind) + '">' + esc(s.kind) + '</span>' : '') +
+      '<div class="m">' + [s.key && s.key + '키', s.bpm && s.bpm + ' BPM', '버전 ' + s.versions.length + '개', s.recCount ? '녹음 ' + s.recCount + '개' : '', '고친 날 ' + (s.updated || '').slice(0, 10)].filter(Boolean).join(' · ') + '</div></button>').join('') + '</div>'
+      : '<div class="empty">' + (SONGS.length ? '찾는 곡이 없어요.' : '아직 곡이 없어요. "새 곡 만들기"로 시작해 보세요.') + '</div>');
+  bindTabs();
+  document.getElementById('newSong').onclick = () => editSong(null);
+  const tf = document.getElementById('txtF'); document.getElementById('txtIn').onclick = () => tf.click(); tf.onchange = () => { const fs = [...tf.files]; tf.value = ''; if (fs.length) importTxt(fs); };
+  const qi = document.getElementById('q'); qi.oninput = () => { view.q = qi.value; clearTimeout(qi._t); qi._t = setTimeout(() => { const p = qi.selectionStart; songsTab().then(() => { const n = document.getElementById('q'); n.focus(); n.setSelectionRange(p, p); }); }, 250); };
+  $app.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { view.kind = b.dataset.kind; songsTab(); });
+  $app.querySelectorAll('[data-song]').forEach(b => b.onclick = () => go({ tab: 'songs', name: 'song', id: b.dataset.song }));
+}
+/* TXT 가사 → 내 곡 (같은 제목이면 가사만 바꾸고, 없으면 새 곡) */
+function importTxt(files){
+  Promise.all(files.map(async f => parseTxt(await readTxt(f), f.name))).then(res => {
+    const items = [].concat(...res); if (!items.length) return toast('가사를 찾지 못했어요. 파일 내용을 확인해 주세요');
+    modal('<h3>TXT 가사 ' + items.length + '곡</h3><p class="small" style="margin:0 0 8px">같은 제목의 내 곡이 있으면 <b>가사·송폼만 바꾸고</b>, 없으면 <b>새 곡</b>으로 만들어요.</p>' +
+      '<div style="max-height:50vh;overflow:auto">' + items.map((it, i) => { const ex = SONGS.find(x => libKey(x.title) === libKey(it.title));
+        return '<div class="frow" style="margin-bottom:6px;align-items:flex-start"><input type="checkbox" data-ti="' + i + '" checked style="width:22px;height:22px;margin-top:4px"><div class="fn" style="flex:1"><input class="in" data-tt="' + i + '" value="' + esc(it.title) + '" style="min-height:40px;margin-bottom:4px">' +
+          '<span class="small">' + (it.form ? '송폼 ' + esc(it.form) + ' · ' : '') + parseSections(it.lyrics).order.filter(Boolean).length + '부분 · ' + (ex ? '<b>있는 곡 가사 바꿈</b>' : '새 곡') + '</span>' +
+          '<details><summary class="small">가사 미리 보기</summary><pre class="ly" style="font-size:14px">' + esc(it.lyrics) + '</pre></details></div></div>'; }).join('') + '</div>' +
+      '<p class="err" id="ie"></p><div class="row" style="margin-top:10px"><button class="btn line" id="ic">닫기</button><button class="btn" id="io">내 곡에 저장</button></div>', m => {
+      m.querySelector('#ic').onclick = closeModal;
+      m.querySelector('#io').onclick = async ev => { const pick = items.map((it, i) => Object.assign({}, it, { title: m.querySelector('[data-tt="' + i + '"]').value.trim() || it.title })).filter((_, i) => m.querySelector('[data-ti="' + i + '"]').checked);
+        if (!pick.length) return m.querySelector('#ie').textContent = '저장할 곡을 골라 주세요.';
+        const b = ev.target; b.disabled = true; b.textContent = '저장하는 중…';
+        try { const r = await api('importLyrics', pick); closeModal(); await loadSongs(true); songsTab(); toast([r.updated ? r.updated + '곡 가사를 바꿨어요' : '', r.added ? r.added + '곡을 새로 만들었어요' : ''].filter(Boolean).join(' · ') || '저장했어요'); }
+        catch(e){ b.disabled = false; b.textContent = '내 곡에 저장'; m.querySelector('#ie').textContent = e.message || e; } };
+    }); });
+}
+function editSong(s){
+  s = s || { title: '', kind: '편곡', key: '', bpm: '', memo: '', form: '', lyrics: '' };
+  modal('<h3>' + (s.id ? '곡 정보 고치기' : '새 곡') + '</h3>' +
+    '<label class="f" for="t">제목</label><input class="in" id="t" value="' + esc(s.title) + '">' +
+    '<div class="row"><div><label class="f" for="k">종류</label><select class="in" id="k">' + ['편곡', '작곡', '기타'].map(k => '<option' + (s.kind === k ? ' selected' : '') + '>' + k + '</option>').join('') + '</select></div>' +
+    '<div><label class="f" for="ky">키</label><input class="in" id="ky" placeholder="예: G, Bb" value="' + esc(s.key) + '"></div><div><label class="f" for="bp">템포</label><input class="in" id="bp" inputmode="numeric" placeholder="BPM" value="' + esc(s.bpm) + '"></div></div>' +
+    '<label class="f" for="me">메모 (코드 진행, 아이디어, 편성 등)</label><textarea class="in" id="me" placeholder="예: 후렴 | G D/F# Em C |&#10;브릿지 4마디 빌드업 후 브레이크">' + esc(s.memo) + '</textarea>' +
+    '<label class="f" for="fo">송폼 <span class="small">— A1·A2=1·2절 · I(8)=Intro 8마디 · A(+2)=2마디 쉬고 · Bx2=두 번 반복 · Bis=끝부분 반복(Bisx3=세 번) · Tag=삽입곡·따로 편곡</span></label><input class="in" id="fo" placeholder="I(8) / A1 / B1 / A2 / B2 x2 / C / B x2 / O" value="' + esc(s.form) + '">' +
+    '<label class="f" for="ly">가사 — [A] [B] 처럼 부분 이름 아래에</label><textarea class="in" id="ly" style="min-height:140px" placeholder="[A]&#10;가사…">' + esc(s.lyrics) + '</textarea>' +
+    '<div class="trow" style="margin-top:8px"><button class="tb" id="fr">송폼으로 가사 틀 만들기</button><button class="tb" id="lb">📚 찬양팀 가사 보관함에서 불러오기</button></div><p class="small" id="lbm" style="margin:4px 0 0"></p>' +
+    '<p class="err" id="e"></p><div class="row"><button class="btn line" id="c">닫기</button><button class="btn" id="o">저장</button></div>', m => {
+    m.querySelector('#c').onclick = closeModal;
+    const F = m.querySelector('#fo'), T = m.querySelector('#ly'), TT = m.querySelector('#t'), LB = m.querySelector('#lb'), LM = m.querySelector('#lbm');
+    m.querySelector('#fr').onclick = () => { const r = frameLyrics(F.value, T.value); if (r == null) return toast('송폼을 먼저 적어 주세요'); T.value = r; T.focus(); toast('송폼 순서대로 가사 칸을 정리했어요'); };
+    const chk = () => { const L = libFind(TT.value); LB.disabled = !L; LM.textContent = L ? '보관함에 "' + L.title + '" 가사가 있어요.' : (LIB && TT.value.trim() ? '보관함에 같은 제목의 가사가 없어요.' : ''); };
+    loadLib().then(chk); TT.addEventListener('input', chk);
+    LB.onclick = () => { const L = libFind(TT.value); if (!L) return; if (T.value.trim() && !confirmInline(LB, '지금 가사를 바꿀까요? 한 번 더 누르세요')) return; T.value = L.lyrics; if (!F.value.trim()) F.value = L.form || ''; toast('보관함 가사를 넣었어요. 확인 후 저장하세요'); };
+    m.querySelector('#o').onclick = async ev => { const v = id => m.querySelector('#' + id).value; if (!v('t').trim()) return m.querySelector('#e').textContent = '제목을 적어 주세요.';
+      const b = ev.target; b.disabled = true; b.textContent = '저장하는 중…';
+      try { const r = await api('saveSong', { id: s.id, title: v('t').trim(), kind: v('k'), key: v('ky').trim(), bpm: v('bp').trim(), memo: v('me'), form: v('fo').trim(), lyrics: v('ly').replace(/\s+$/, '') });
+        closeModal(); await loadSongs(true); go({ tab: 'songs', name: 'song', id: r.id }); toast('저장했어요'); }
+      catch(e){ b.disabled = false; b.textContent = '저장'; m.querySelector('#e').textContent = e.message; } };
+  });
+}
+async function songView(){
+  await Promise.all([loadSongs(), loadLib()]); const s0 = SONGS.find(x => x.id === view.id); if (!s0) return go({ tab: 'songs' }); const s = eff(s0);
+  const recs = (await loadRecs()).filter(r => r.songId === s.id);
+  const vers = s.versions.slice().sort((a, b) => b.date.localeCompare(a.date));
+  $app.innerHTML = '<div class="bar"><button class="back" id="bk">← 내 곡</button><h2>' + esc(s.title) + (s.kind ? ' <span class="kind ' + esc(s.kind) + '">' + esc(s.kind) + '</span>' : '') + '</h2><button class="btn line" id="ed">정보 고치기</button></div>' +
+    '<div class="card">' + '<div class="small">' + [s.key && s.key + '키', s.bpm && s.bpm + ' BPM', '만든 날 ' + (s.created || '').slice(0, 10)].filter(Boolean).join(' · ') + '</div>' +
+      (s.memo ? '<div class="memo" style="margin-top:8px">' + esc(s.memo) + '</div>' : '') +
+      (s.form ? '<div class="form"><b>송폼</b> ' + parseForm(s.form).map(f => '<span>' + esc(f) + '</span>').join('') + '</div>' : '') +
+      (s.lyrics ? '<details><summary>가사 보기 (송폼 순서)</summary>' + (s.fromLib ? '<p class="small" style="margin:0 0 4px">📚 찬양팀 가사 보관함에서 가져왔어요. 고치려면 "정보 고치기".</p>' : '') + '<pre class="ly">' + esc(expandLyrics(s)) + '</pre><button class="tb" id="txo">📝 가사 TXT 받기</button></details>' : '') +
+      (!s.memo && !s.form && !s.lyrics ? '<p class="small" style="margin:6px 0 0">메모·송폼·가사는 "정보 고치기"에서 적을 수 있어요.</p>' : '') + '</div>' +
+    '<h3 class="sec">버전 (' + vers.length + ')</h3><p><button class="btn wide" id="nv">＋ 새 버전 올리기 (악보·음원)</button></p>' +
+    (vers.length ? vers.map(v => '<div class="ver"><div class="trow"><h4 style="flex:1">' + esc(v.name || '버전') + ' <span class="small">' + esc(v.date) + '</span></h4><button class="tb" data-ev="' + v.id + '">고치기</button></div>' +
+      (v.memo ? '<div class="memo small" style="margin-top:4px">' + esc(v.memo) + '</div>' : '') +
+      '<div class="files">' + (v.scores.length ? '<button class="btn line" data-score="' + v.id + '">🎼 악보 보기 · 필기 (' + v.scores.length + '개 파일)</button>' : '') +
+      v.audios.map(a => '<div class="file"><span class="n">🎧 ' + esc(a.name) + ' <span class="small">' + sizeText(a.size) + '</span></span><button class="tb" data-play="' + a.id + '">▶ 듣기</button><div class="audiowrap" id="aw-' + a.id + '"></div></div>').join('') + '</div></div>').join('')
+      : '<div class="empty" style="padding:16px">아직 버전이 없어요. 악보나 음원을 올려 "편곡 1차"를 만들어 보세요.</div>') +
+    '<h3 class="sec">이 곡의 녹음 스케치 (' + recs.length + ')</h3><p><button class="btn line wide" id="rc">🎙 이 곡에 녹음하기</button></p>' +
+    recs.map(recRow).join('') +
+    '<p style="margin-top:28px"><button class="tb" id="del" style="color:var(--rec)">이 곡 지우기</button></p>';
+  document.getElementById('bk').onclick = () => go({ tab: 'songs' });
+  document.getElementById('ed').onclick = () => editSong(s0);
+  const txo = document.getElementById('txo'); if (txo) txo.onclick = () => saveTxt(s.title + ' 가사', songTxt(s));
+  document.getElementById('nv').onclick = () => editVersion(s, null);
+  document.getElementById('rc').onclick = () => go({ tab: 'rec', songId: s.id });
+  $app.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => editVersion(s, s.versions.find(v => v.id === b.dataset.ev)));
+  $app.querySelectorAll('[data-score]').forEach(b => b.onclick = () => go({ tab: 'songs', name: 'score', song: s.id, ver: b.dataset.score }));
+  bindPlay(); bindRecRows();
+  document.getElementById('del').onclick = () => modal('<h3>곡 지우기</h3><p>"' + esc(s.title) + '"와 모든 버전의 악보·음원을 지울까요? (드라이브 휴지통으로 가요. 녹음 스케치는 남아요)</p><div class="row"><button class="btn line" id="c">아니요</button><button class="btn red" id="o">지우기</button></div>', m => {
+    m.querySelector('#c').onclick = closeModal; m.querySelector('#o').onclick = async () => { try { await api('deleteSong', s.id); closeModal(); await loadSongs(true); await loadRecs(true); go({ tab: 'songs' }); toast('지웠어요'); } catch(e){ closeModal(); toast(e.message); } }; });
+}
+function bindPlay(){ $app.querySelectorAll('[data-play]').forEach(b => b.onclick = async () => { const fid = b.dataset.play, w = document.getElementById('aw-' + fid); b.disabled = true; b.textContent = '불러오는 중…';
+  try { const f = await fileURL(fid); w.innerHTML = '<audio controls preload="auto" src="' + f.url + '"></audio>'; const a = w.querySelector('audio'); a.play().catch(() => {}); b.textContent = '⬇ 받기'; b.disabled = false; b.onclick = () => saveBlobURL(f.url, f.name); }
+  catch(e){ b.disabled = false; b.textContent = '▶ 듣기'; toast(e.message); } }); }
+function saveBlobURL(url, name){ const a = document.createElement('a'); a.href = url; a.download = name || 'file'; document.body.appendChild(a); a.click(); a.remove(); }
+function editVersion(s, v){
+  const n = s.versions.length + 1;
+  v = v || { name: (s.kind === '작곡' ? '작곡 ' : '편곡 ') + n + '차', date: nowStr().slice(0, 10), memo: '', scores: [], audios: [] };
+  const rm = [];
+  modal('<h3>' + (v.id ? '버전 고치기' : '새 버전') + '</h3>' +
+    '<div class="row"><div><label class="f" for="n">이름</label><input class="in" id="n" value="' + esc(v.name) + '"></div><div style="flex:0 0 150px"><label class="f" for="d">날짜</label><input class="in" id="d" type="date" value="' + esc((v.date || '').slice(0, 10)) + '"></div></div>' +
+    '<label class="f" for="me">메모 (무엇을 바꿨는지)</label><textarea class="in" id="me" style="min-height:70px">' + esc(v.memo) + '</textarea>' +
+    (v.scores.length || v.audios.length ? '<label class="f">올라가 있는 파일</label><div class="files">' + v.scores.concat(v.audios).map(f => '<div class="file" id="f-' + f.id + '"><span class="n">' + esc(f.name) + '</span><button class="tb" data-rm="' + f.id + '" style="color:var(--rec)">빼기</button></div>').join('') + '</div>' : '') +
+    '<label class="f" for="sf">악보 추가 (PDF 또는 사진 여러 장)</label><input class="in" id="sf" type="file" accept="application/pdf,image/*" multiple style="padding:10px">' +
+    '<label class="f" for="af">음원 추가 (mp3, m4a, wav — Suno 결과도)</label><input class="in" id="af" type="file" accept="audio/*,.mp3,.m4a,.wav,.aac" multiple style="padding:10px">' +
+    '<p class="small" id="fm" style="margin:6px 0 0">한 번에 모두 합쳐 40MB까지 올릴 수 있어요.</p><p class="err" id="e"></p>' +
+    '<div class="row" style="margin-top:8px">' + (v.id ? '<button class="btn red" id="dv" style="flex:0 0 auto">버전 지우기</button>' : '') + '<button class="btn line" id="c">닫기</button><button class="btn" id="o">저장</button></div>', m => {
+    m.querySelector('#c').onclick = closeModal;
+    m.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { rm.push(b.dataset.rm); m.querySelector('#f-' + b.dataset.rm).remove(); });
+    const dv = m.querySelector('#dv'); if (dv) dv.onclick = async () => { if (!confirmInline(dv, '정말 지울까요? 한 번 더 누르세요')) return; try { await api('deleteVersion', v.id); closeModal(); await loadSongs(true); songView(); toast('버전을 지웠어요'); } catch(e){ m.querySelector('#e').textContent = e.message; } };
+    m.querySelector('#o').onclick = async ev => { const b = ev.target, E = m.querySelector('#e'); E.textContent = '';
+      const sf = [...m.querySelector('#sf').files], af = [...m.querySelector('#af').files];
+      if (sf.some(f => /\.hwpx?$/i.test(f.name))) return E.textContent = '한글 파일은 PDF로 저장해서 올려 주세요.';
+      const total = sf.concat(af).reduce((a, f) => a + f.size, 0); if (total > 40 * 1048576) return E.textContent = '파일이 너무 커요. 40MB 이하로 나눠서 올려 주세요.';
+      if (!v.id && !sf.length && !af.length && !m.querySelector('#me').value.trim()) return E.textContent = '악보나 음원, 메모 중 하나는 넣어 주세요.';
+      b.disabled = true; b.textContent = total ? '올리는 중… (' + sizeText(total) + ')' : '저장하는 중…';
+      try { const scores = await Promise.all(sf.map(readFile)), audios = await Promise.all(af.map(readFile));
+        await api('saveVersion', s.id, { id: v.id, name: m.querySelector('#n').value.trim(), date: m.querySelector('#d').value, memo: m.querySelector('#me').value }, scores, audios, rm);
+        closeModal(); await loadSongs(true); songView(); toast('버전을 저장했어요'); }
+      catch(e){ b.disabled = false; b.textContent = '저장'; E.textContent = e.message; } };
+  });
+}
+function confirmInline(b, msg){ if (b.dataset.ok) return true; b.dataset.ok = '1'; b.textContent = msg; setTimeout(() => { delete b.dataset.ok; }, 4000); return false; }
+
+/* ── 녹음 ── */
+let REC = null;
+function recRow(r){ const song = songOpts.find(s => s.id === r.songId);
+  return '<div class="file" style="margin-bottom:8px;flex-wrap:wrap"><span class="n"><b>' + esc(r.name || '녹음') + '</b><br><span class="small">' + esc(r.date) + (r.sec ? ' · ' + fmtSec(r.sec) : '') + (song && view.name !== 'song' ? ' · ' + esc(song.title) : '') + '</span>' + (r.memo ? '<br><span class="small">' + esc(r.memo) + '</span>' : '') + '</span>' +
+    '<button class="tb" data-play="' + r.file.id + '">▶ 듣기</button><button class="tb" data-er="' + r.id + '">고치기</button><div class="audiowrap" id="aw-' + r.file.id + '"></div></div>'; }
+function bindRecRows(){ $app.querySelectorAll('[data-er]').forEach(b => b.onclick = () => editRec(RECS.find(r => r.id === b.dataset.er))); }
+function songSelect(id, sel){ return '<select class="in" id="' + id + '"><option value="">(곡에 연결하지 않음)</option>' + songOpts.map(s => '<option value="' + s.id + '"' + (s.id === sel ? ' selected' : '') + '>' + esc(s.title) + '</option>').join('') + '</select>'; }
+function editRec(r){
+  modal('<h3>녹음 고치기</h3><label class="f" for="n">이름</label><input class="in" id="n" value="' + esc(r.name) + '"><label class="f" for="sg">곡</label>' + songSelect('sg', r.songId) +
+    '<label class="f" for="me">메모</label><textarea class="in" id="me" style="min-height:70px">' + esc(r.memo) + '</textarea><p class="err" id="e"></p>' +
+    '<div class="row"><button class="btn red" id="dl" style="flex:0 0 auto">지우기</button><button class="btn line" id="c">닫기</button><button class="btn" id="o">저장</button></div>', m => {
+    m.querySelector('#c').onclick = closeModal;
+    m.querySelector('#dl').onclick = async ev => { if (!confirmInline(ev.target, '한 번 더 누르면 지워요')) return; try { await api('deleteRec', r.id); closeModal(); await loadRecs(true); await loadSongs(true); render(); toast('지웠어요'); } catch(e){ m.querySelector('#e').textContent = e.message; } };
+    m.querySelector('#o').onclick = async () => { try { await api('saveRec', { id: r.id, name: m.querySelector('#n').value.trim(), songId: m.querySelector('#sg').value, memo: m.querySelector('#me').value }); closeModal(); await loadRecs(true); await loadSongs(true); render(); toast('저장했어요'); } catch(e){ m.querySelector('#e').textContent = e.message; } };
+  });
+}
+async function recTab(){
+  $app.innerHTML = tabs() + '<div class="card recbox"><button class="recbtn" id="rb" aria-label="녹음 시작">녹음</button><div class="timer" id="tm">0:00</div><div class="small" id="rs">버튼을 누르면 바로 녹음돼요</div><div class="meter"><i id="mt"></i></div></div><div id="after"></div><h3 class="sec">녹음 스케치</h3><div id="rl"><div class="loading">불러오는 중…</div></div>';
+  bindTabs();
+  const rb = document.getElementById('rb');
+  if (!navigator.mediaDevices || !window.MediaRecorder) { rb.disabled = true; document.getElementById('rs').textContent = '이 브라우저는 녹음을 지원하지 않아요. 사파리나 크롬 최신 버전에서 열어 주세요.'; }
+  rb.onclick = () => REC && REC.state === 'recording' ? stopRec() : startRec();
+  await loadSongs(); await loadRecs();
+  const rl = document.getElementById('rl'); if (!rl) return;
+  rl.innerHTML = RECS.length ? RECS.map(recRow).join('') : '<div class="empty" style="padding:16px">아직 녹음이 없어요.</div>';
+  bindPlay(); bindRecRows();
+}
+let recChunks = [], recStart = 0, recTimer = null, recStream = null, recCtx = null, wakeLock = null;
+async function startRec(){
+  const rs = document.getElementById('rs');
+  try { recStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } }); }
+  catch(e){ rs.textContent = '마이크를 쓸 수 없어요. 브라우저 설정에서 마이크를 허용해 주세요.'; return; }
+  const type = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+  REC = new MediaRecorder(recStream, type ? { mimeType: type, audioBitsPerSecond: 128000 } : undefined); recChunks = [];
+  REC.ondataavailable = e => e.data && e.data.size && recChunks.push(e.data);
+  REC.onstop = finishRec; REC.start(1000); recStart = Date.now();
+  try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+  try { recCtx = new (window.AudioContext || window.webkitAudioContext)(); const src = recCtx.createMediaStreamSource(recStream), an = recCtx.createAnalyser(); an.fftSize = 512; src.connect(an); const buf = new Uint8Array(an.fftSize);
+    const tick = () => { if (!REC || REC.state !== 'recording') return; an.getByteTimeDomainData(buf); let p = 0; for (const v of buf) p = Math.max(p, Math.abs(v - 128)); const mt = document.getElementById('mt'); if (mt) mt.style.width = Math.min(100, p / 1.1) + '%'; requestAnimationFrame(tick); }; tick(); } catch(e){}
+  document.getElementById('rb').classList.add('on'); document.getElementById('rb').textContent = '멈춤'; rs.textContent = '녹음 중… 화면을 켜 둔 채로 두세요';
+  recTimer = setInterval(() => { const t = document.getElementById('tm'); if (t) t.textContent = fmtSec((Date.now() - recStart) / 1000); }, 250);
+}
+function stopRec(){ if (REC && REC.state === 'recording') REC.stop(); }
+function finishRec(){
+  clearInterval(recTimer); const sec = (Date.now() - recStart) / 1000;
+  recStream && recStream.getTracks().forEach(t => t.stop()); try { recCtx && recCtx.close(); } catch(e){} try { wakeLock && wakeLock.release(); } catch(e){}
+  const mime = (REC.mimeType || 'audio/webm').split(';')[0], ext = /mp4|m4a|aac/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : 'webm';
+  const blob = new Blob(recChunks, { type: mime }); REC = null;
+  const rb = document.getElementById('rb'); if (!rb) return; rb.classList.remove('on'); rb.textContent = '녹음'; document.getElementById('rs').textContent = '녹음했어요. 이름을 정하고 저장하세요'; document.getElementById('mt').style.width = '0';
+  const url = URL.createObjectURL(blob), name = '스케치 ' + nowStr().slice(5);
+  const A = document.getElementById('after');
+  A.innerHTML = '<div class="card"><audio controls src="' + url + '" style="width:100%"></audio><label class="f" for="rn">이름</label><input class="in" id="rn" value="' + esc(name) + '">' +
+    '<label class="f" for="rsg">곡에 연결</label>' + songSelect('rsg', view.songId || '') + '<label class="f" for="rme">메모</label><input class="in" id="rme" placeholder="예: 후렴 멜로디 아이디어, 브릿지 코드">' +
+    '<p class="err" id="re"></p><div class="row" style="margin-top:8px"><button class="btn line" id="rx">버리기</button><button class="btn" id="ro">저장</button></div></div>';
+  document.getElementById('rx').onclick = ev => { if (!confirmInline(ev.target, '한 번 더 누르면 버려요')) return; A.innerHTML = ''; URL.revokeObjectURL(url); };
+  document.getElementById('ro').onclick = async ev => { const b = ev.target; b.disabled = true; b.textContent = '저장하는 중… (' + sizeText(blob.size) + ')';
+    try { const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
+      const nm = document.getElementById('rn').value.trim() || name;
+      await api('saveRec', { name: nm, songId: document.getElementById('rsg').value, memo: document.getElementById('rme').value, sec: Math.round(sec) }, { name: nm.replace(/[\\/:*?"<>|]/g, '') + '.' + ext, mime, b64 });
+      A.innerHTML = ''; URL.revokeObjectURL(url); await loadRecs(true); await loadSongs(true); toast('녹음을 저장했어요'); recTab(); }
+    catch(e){ b.disabled = false; b.textContent = '저장'; document.getElementById('re').textContent = '저장하지 못했어요: ' + e.message + ' (이 화면을 닫지 마시고 다시 눌러 주세요)'; } };
+}
+window.addEventListener('beforeunload', e => { if (REC && REC.state === 'recording' || document.getElementById('ro')) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ── 팀 콘티 (읽기) ── */
+async function teamData(t, force){ if (!TEAM[t] || force) TEAM[t] = await api('teamData', t); return TEAM[t]; }
+async function teamTab(){
+  const t = view.team || LS.get('arr-team', 'hiel');
+  $app.innerHTML = tabs() + '<div class="teamsw"><button class="hiel' + (t === 'hiel' ? ' on' : '') + '" data-team="hiel">히엘워십</button><button class="dwave' + (t === 'dwave' ? ' on' : '') + '" data-team="dwave">D-wave 워십</button></div><div id="tl"><div class="loading">불러오는 중…</div></div>';
+  bindTabs(); $app.querySelectorAll('[data-team]').forEach(b => b.onclick = () => { LS.set('arr-team', b.dataset.team); go({ tab: 'team', team: b.dataset.team }); });
+  const d = await teamData(t, true); const tl = document.getElementById('tl'); if (!tl) return;
+  if (!d.sets.length) return tl.innerHTML = '<div class="empty">이 팀에는 아직 콘티가 없어요.</div>';
+  const months = []; d.sets.forEach(s => { const m = s.date.slice(0, 7); let g = months.find(x => x.m === m); if (!g) months.push(g = { m, list: [] }); g.list.push(s); });
+  tl.innerHTML = months.map(g => '<div class="month">' + esc(g.m.replace(/^(\d{4})-(\d\d)$/, (a, y, mm) => y + '년 ' + (+mm) + '월')) + '</div><div class="list">' + g.list.map(s => '<button class="item" data-set="' + s.id + '"><b>' + esc(dateText(s.date)) + '</b> <span class="m">' + esc(s.name) + '</span><div class="m">' + esc(d.songs.filter(x => x.setId === s.id).sort((a, b) => a.order - b.order).map(x => x.title).filter(Boolean).join(' · ')) + '</div></button>').join('') + '</div>').join('');
+  tl.querySelectorAll('[data-set]').forEach(b => b.onclick = () => go({ tab: 'team', team: t, name: 'teamset', id: b.dataset.set }));
+}
+async function teamSetView(){
+  const t = view.team, d = await teamData(t), s = d.sets.find(x => x.id === view.id); if (!s) return go({ tab: 'team', team: t });
+  await loadLib(); const songs = d.songs.filter(x => x.setId === s.id).sort((a, b) => a.order - b.order).map(eff);
+  $app.innerHTML = '<div class="bar"><button class="back" id="bk">← 팀 콘티</button><h2>' + esc(dateText(s.date) + ' ' + s.name) + '</h2><a class="btn line" href="../' + t + '/" target="_blank" rel="noopener">팀 앱에서 열기</a></div>' +
+    (s.notice ? '<div class="card memo" style="margin-bottom:12px">' + esc(s.notice) + '</div>' : '') +
+    (songs.some(x => x.lyrics) ? '<p><button class="btn line" id="stx">📝 이날 가사 전체 TXT 받기</button></p>' : '') +
+    songs.map(x => '<div class="song"><h4>' + (x.no ? '<span class="no">' + esc(x.no) + '</span>' : '') + esc(x.title) + '</h4>' + (x.desc ? '<div class="memo small">' + esc(x.desc) + '</div>' : '') +
+      (x.links ? '<div class="small" style="margin-top:4px">' + x.links.split('\n').filter(Boolean).map(l => { const u = (l.match(/https?:\/\/\S+/) || [''])[0]; return u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(l.replace(u, '').trim() || '레퍼런스') + '</a>' : ''; }).join(' · ') + '</div>' : '') +
+      (x.form ? '<div class="form"><b>송폼</b> ' + parseForm(x.form).map(f => '<span>' + esc(f) + '</span>').join('') + '</div>' : '') +
+      (x.lyrics ? '<details><summary>가사 보기</summary><pre class="ly">' + esc(expandLyrics(x)) + '</pre></details>' : '') + '</div>').join('') +
+    (s.files.length ? '<h3 class="sec">악보 <span class="small">(인도자 공용 필기 함께 보기)</span></h3><div class="pages" id="pages"><div class="loading">악보를 불러오는 중…</div></div>' : '');
+  document.getElementById('bk').onclick = () => go({ tab: 'team', team: t });
+  const stx = document.getElementById('stx'); if (stx) stx.onclick = () => saveTxt(s.date + ' ' + s.name + ' 가사', dateText(s.date) + ' ' + s.name + ' 찬양 가사\n\n' + songs.filter(x => x.lyrics || x.form).map(x => '━━━━━━━━━━━━━━━━\n' + (x.no ? x.no + '. ' : '') + songTxt(x)).join('\n\n'));
+  if (!s.files.length) return;
+  INK = { readonly: true, pages: [], mine: {}, shared: {}, show: { shared: true, mine: false } };
+  try { INK.shared = await api('teamShared', t, s.id); } catch(e){}
+  await renderFiles(s.files, document.getElementById('pages'));
+}
+
+/* ── 악보 보기 + 필기 (내 곡 버전) ── */
+const PENS = [{ c: '#1C2230', n: '검정' }, { c: '#D0262F', n: '빨강' }, { c: '#1F5FD1', n: '파랑' }];
+const STAMPS = ['빌드업', '브레이크', '다운', '크게', '작게', '반복', '인터', '엔딩', '텐션 유지', '여기 수정', '코드 확인', '?'];
+let INK = null;
+async function scoreView(){
+  await loadSongs(); const s = SONGS.find(x => x.id === view.song), v = s && s.versions.find(x => x.id === view.ver); if (!v) return go({ tab: 'songs' });
+  $app.innerHTML = '<div class="bar"><button class="back" id="bk">← ' + esc(s.title) + '</button><h2>' + esc(v.name) + '</h2></div><div class="tools" id="tools"></div><div class="pages" id="pages"><div class="loading">악보를 불러오는 중…</div></div>';
+  document.getElementById('bk').onclick = () => go({ tab: 'songs', name: 'song', id: s.id });
+  INK = { verId: v.id, title: s.title + ' ' + v.name, pages: [], mine: {}, shared: {}, show: { mine: true, shared: false }, tool: 'pen', color: PENS[1].c, stamp: STAMPS[0], undo: [], dirty: false, drawing: false, penOnly: LS.get('arr-penonly', true) };
+  const my = INK; tools();
+  try { const a = await api('getAnn', v.id); if (INK === my) INK.mine = a || {}; } catch(e){}
+  await renderFiles(v.scores.map(f => f.id), document.getElementById('pages'), true);
+}
+function leaveScore(){ if (INK && INK.dirty) flushSave(); INK = null; }
+async function renderFiles(fids, P, own){
+  const my = INK; let n = 0, first = true;
+  try {
+    for (const fid of fids) {
+      const f = await fileURL(fid); if (INK !== my) return;
+      if (first) { P.innerHTML = ''; first = false; }
+      if (/pdf/.test(f.mime)) {
+        const lib = window['pdfjs-dist/build/pdf']; lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const doc = await lib.getDocument({ data: b64bytes(f.b64) }).promise;
+        for (let k = 1; k <= doc.numPages; k++) { if (INK !== my) return; const page = await doc.getPage(k); n++; const pg = addPage(P, n);
+          const W = Math.min(2400, Math.round(P.clientWidth * (window.devicePixelRatio || 1) * 1.3)), v1 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: W / v1.width });
+          const c = document.createElement('canvas'); c.className = 'sc'; c.width = Math.round(vp.width); c.height = Math.round(vp.height); pg.wrap.prepend(c);
+          await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise; fitInk(pg, vp.width, vp.height); }
+      } else if (/^image\//.test(f.mime)) {
+        n++; const pg = addPage(P, n), img = new Image(); img.className = 'sc'; img.alt = n + '쪽';
+        await new Promise(r => { img.onload = r; img.onerror = r; img.src = f.url; }); pg.wrap.prepend(img); fitInk(pg, img.naturalWidth || 1000, img.naturalHeight || 1414);
+      }
+    }
+    if (first) P.innerHTML = '<div class="empty">볼 수 있는 악보 파일이 없어요.</div>';
+    modeClass();
+  } catch(e){ P.innerHTML = '<p class="err">악보를 열지 못했어요. (' + esc(e.message || e) + ')</p>'; }
+}
+function addPage(P, n){ const wrap = document.createElement('div'); wrap.className = 'pg'; wrap.innerHTML = '<span class="pgno">' + n + '쪽</span>'; const ink = document.createElement('canvas'); ink.className = 'ink'; wrap.appendChild(ink); P.appendChild(wrap);
+  const pg = { wrap, ink, idx: n - 1 }; INK.pages.push(pg); if (!INK.readonly) bindInk(pg); return pg; }
+function fitInk(pg, w, h){ pg.w = w; pg.h = h; pg.ink.width = Math.round(w); pg.ink.height = Math.round(h); drawPage(pg); }
+function tools(){
+  const T = document.getElementById('tools'); if (!T || !INK) return; const d = INK.drawing;
+  let h = '<div class="trow"><button class="tb' + (d ? '' : ' on') + '" data-mode="view">보기</button><button class="tb' + (d ? ' on' : '') + '" data-mode="draw">✎ 쓰기</button>';
+  if (d) h += PENS.map(p => '<button class="tb' + (INK.tool === 'pen' && INK.color === p.c ? ' on' : '') + '" data-pen="' + p.c + '" aria-label="' + p.n + '"><span class="dot" style="background:' + p.c + '"></span></button>').join('') +
+    '<button class="tb' + (INK.tool === 'hl' ? ' on' : '') + '" data-tool="hl"><span class="dot" style="background:#FFD84A"></span>형광</button><button class="tb' + (INK.tool === 'tx' ? ' on' : '') + '" data-tool="tx">🏷 주석</button><button class="tb' + (INK.tool === 'er' ? ' on' : '') + '" data-tool="er">지우개</button><button class="tb" id="undo">↶</button><button class="tb' + (INK.penOnly ? ' on' : '') + '" id="po">펜으로만</button>';
+  h += '<button class="tb" id="dl">⬇ PDF</button><span class="save" id="sv"></span></div>';
+  if (d && INK.tool === 'tx') h += '<div class="trow" style="margin-top:6px">' + STAMPS.map(t => '<button class="tb' + (INK.stamp === t ? ' on' : '') + '" data-stamp="' + esc(t) + '">' + esc(t) + '</button>').join('') + '<button class="tb" id="stNew">＋ 직접</button></div>';
+  T.innerHTML = h;
+  T.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { INK.drawing = b.dataset.mode === 'draw'; tools(); modeClass(); });
+  T.querySelectorAll('[data-pen]').forEach(b => b.onclick = () => { INK.tool = 'pen'; INK.color = b.dataset.pen; tools(); });
+  T.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => { INK.tool = b.dataset.tool; tools(); });
+  T.querySelectorAll('[data-stamp]').forEach(b => b.onclick = () => { INK.stamp = b.dataset.stamp; tools(); });
+  const sn = document.getElementById('stNew'); if (sn) sn.onclick = () => { const v = prompt('주석 글자 (짧게)'); if (v && v.trim()) { INK.stamp = v.trim().slice(0, 20); tools(); } };
+  const u = document.getElementById('undo'); if (u) u.onclick = undo;
+  const po = document.getElementById('po'); if (po) po.onclick = () => { INK.penOnly = !INK.penOnly; LS.set('arr-penonly', INK.penOnly); tools(); modeClass(); };
+  document.getElementById('dl').onclick = exportPdf;
+}
+function modeClass(){ const P = document.getElementById('pages'); if (!P || !INK) return; P.classList.toggle('drawing', !!INK.drawing); P.classList.toggle('penonly', !!(INK.drawing && INK.penOnly)); }
+function drawStroke(ctx, s, W){
+  const pts = s.p; if (!pts || !pts.length) return;
+  if (s.t) { const fz = s.w * W, x = pts[0][0] * W, y = pts[0][1] * W; ctx.save(); ctx.font = '700 ' + fz + 'px "Noto Sans KR",sans-serif'; const tw = ctx.measureText(s.t).width, px = fz * .45, h = fz * 1.5;
+    ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.strokeStyle = s.c; ctx.lineWidth = Math.max(1.5, fz * .09); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y - h / 2, tw + px * 2, h, h / 2) : ctx.rect(x, y - h / 2, tw + px * 2, h); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = s.c; ctx.textBaseline = 'middle'; ctx.fillText(s.t, x + px, y + fz * .04); ctx.restore(); s._bw = (tw + px * 2) / W; s._bh = h / W; return; }
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (s.h) { ctx.globalAlpha = .33; ctx.strokeStyle = s.c; ctx.lineWidth = s.w * W; ctx.beginPath(); ctx.moveTo(pts[0][0] * W, pts[0][1] * W); pts.forEach(q => ctx.lineTo(q[0] * W, q[1] * W)); ctx.stroke(); }
+  else { ctx.strokeStyle = s.c; ctx.fillStyle = s.c; if (pts.length === 1) { ctx.beginPath(); ctx.arc(pts[0][0] * W, pts[0][1] * W, s.w * W * .5, 0, 7); ctx.fill(); }
+    for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i]; ctx.lineWidth = s.w * W * (.55 + .9 * ((a[2] + b[2]) / 2)); ctx.beginPath(); ctx.moveTo(a[0] * W, a[1] * W); ctx.lineTo(b[0] * W, b[1] * W); ctx.stroke(); } }
+  ctx.restore();
+}
+function drawPage(pg, ctx, W){ if (!pg.w) return; const own = !ctx; ctx = ctx || pg.ink.getContext('2d'); W = W || pg.w; if (own) ctx.clearRect(0, 0, pg.ink.width, pg.ink.height);
+  ['shared', 'mine'].forEach(l => { if (INK.show[l]) (INK[l][pg.idx] || []).forEach(s => drawStroke(ctx, s, W)); }); }
+function bindInk(pg){
+  let cur = null, pid = null;
+  const pos = e => { const r = pg.ink.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.width, e.pointerType === 'pen' ? (e.pressure || .5) : .5]; };
+  const L = () => INK.mine[pg.idx] || (INK.mine[pg.idx] = []);
+  pg.ink.addEventListener('pointerdown', e => {
+    if (!INK || !INK.drawing || !pg.w || (INK.penOnly && e.pointerType === 'touch')) return; e.preventDefault(); pg.ink.setPointerCapture(e.pointerId); pid = e.pointerId;
+    if (INK.tool === 'er') { cur = { er: true }; erase(pg, pos(e)); return; }
+    if (INK.tool === 'tx') { const q = pos(e), st = { t: INK.stamp, c: INK.color, w: .026, h: 0, p: [[+q[0].toFixed(4), +q[1].toFixed(4), 0]] }; L().push(st); INK.undo.push({ i: pg.idx, add: st }); drawPage(pg); dirty(); pid = null; return; }
+    const hl = INK.tool === 'hl'; cur = { c: hl ? '#FFD84A' : INK.color, w: hl ? .022 : .0032, h: hl ? 1 : 0, p: [pos(e)] }; });
+  pg.ink.addEventListener('pointermove', e => { if (!cur || e.pointerId !== pid) return; e.preventDefault(); const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    if (cur.er) return evs.forEach(v => erase(pg, pos(v))); const ctx = pg.ink.getContext('2d');
+    evs.forEach(v => { const q = pos(v), last = cur.p[cur.p.length - 1]; if (Math.hypot(q[0] - last[0], q[1] - last[1]) < .0012) return; cur.p.push(q); if (!cur.h) drawStroke(ctx, { c: cur.c, w: cur.w, h: 0, p: [last, q] }, pg.w); });
+    if (cur.h) { drawPage(pg); drawStroke(ctx, cur, pg.w); } });
+  const end = e => { if (!cur || e.pointerId !== pid) return; if (!cur.er) { cur.p = cur.p.map(q => [+q[0].toFixed(4), +q[1].toFixed(4), +q[2].toFixed(2)]); L().push(cur); INK.undo.push({ i: pg.idx, add: cur }); dirty(); } cur = null; pid = null; drawPage(pg); };
+  pg.ink.addEventListener('pointerup', end); pg.ink.addEventListener('pointercancel', end);
+}
+function erase(pg, q){ const L = INK.mine[pg.idx] || [], r = .012; let hit = false;
+  for (let k = L.length - 1; k >= 0; k--) { const s = L[k]; const hitT = s.t && q[0] >= s.p[0][0] - r && q[0] <= s.p[0][0] + (s._bw || .1) + r && Math.abs(q[1] - s.p[0][1]) <= (s._bh || .04) / 2 + r;
+    if (hitT || (!s.t && s.p.some(a => Math.hypot(a[0] - q[0], a[1] - q[1]) < r + s.w / 2))) { INK.undo.push({ i: pg.idx, del: s, at: k }); L.splice(k, 1); hit = true; } }
+  if (hit) { drawPage(pg); dirty(); } }
+function undo(){ const u = INK.undo.pop(); if (!u) return toast('되돌릴 것이 없어요'); const L = INK.mine[u.i] || (INK.mine[u.i] = []);
+  if (u.add) { const k = L.lastIndexOf(u.add); if (k >= 0) L.splice(k, 1); } else L.splice(Math.min(u.at, L.length), 0, u.del); drawPage(INK.pages[u.i]); dirty(); }
+let saveT = null, saving = false;
+function dirty(){ INK.dirty = true; const s = document.getElementById('sv'); if (s) s.textContent = '저장 대기…'; clearTimeout(saveT); saveT = setTimeout(flushSave, 1500); }
+async function flushSave(){ clearTimeout(saveT); if (!INK || !INK.dirty || saving || INK.readonly) return; const my = INK; my.dirty = false; saving = true; const s = document.getElementById('sv'); if (s) s.textContent = '저장하는 중…';
+  const clean = {}; Object.keys(my.mine).forEach(k => { if (my.mine[k] && my.mine[k].length) clean[k] = my.mine[k].map(x => { const o = Object.assign({}, x); delete o._bw; delete o._bh; return o; }); });
+  try { await api('saveAnn', my.verId, clean); saving = false; const s2 = document.getElementById('sv'); if (s2 && INK === my) s2.textContent = '✓ 저장됨'; if (my.dirty) flushSave(); }
+  catch(e){ saving = false; my.dirty = true; const s2 = document.getElementById('sv'); if (s2) s2.textContent = '저장 못 함 — 다시 시도 중'; saveT = setTimeout(flushSave, 5000); } }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
+function exportPdf(){
+  if (!INK || !INK.pages.length || !INK.pages[0].w) return toast('악보를 다 불러온 뒤에 눌러 주세요');
+  const imgs = INK.pages.map(pg => { const src = pg.wrap.querySelector('.sc'), W = Math.min(2000, Math.round(pg.w)), H = Math.round(pg.h * W / pg.w), c = document.createElement('canvas'); c.width = W; c.height = H; const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.drawImage(src, 0, 0, W, H); drawPage(pg, ctx, W); return { w: W, h: H, bytes: b64bytes(c.toDataURL('image/jpeg', .88).split(',')[1]) }; });
+  const enc = new TextEncoder(), parts = [], offs = []; let len = 0; const put = x => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); len += b.length; };
+  const obj = (n, f) => { offs[n] = len; put(n + ' 0 obj\n'); f(); put('\nendobj\n'); }; put('%PDF-1.4\n'); const N = imgs.length;
+  obj(1, () => put('<< /Type /Catalog /Pages 2 0 R >>')); obj(2, () => put('<< /Type /Pages /Kids [' + imgs.map((_, i) => (3 + i * 3) + ' 0 R').join(' ') + '] /Count ' + N + ' >>'));
+  imgs.forEach((im, i) => { const p = 3 + i * 3, pw = 595.28, ph = +(pw * im.h / im.w).toFixed(2), cs = 'q ' + pw + ' 0 0 ' + ph + ' 0 0 cm /Im0 Do Q';
+    obj(p, () => put('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pw + ' ' + ph + '] /Resources << /XObject << /Im0 ' + (p + 2) + ' 0 R >> >> /Contents ' + (p + 1) + ' 0 R >>'));
+    obj(p + 1, () => { put('<< /Length ' + cs.length + ' >>\nstream\n'); put(cs); put('\nendstream'); });
+    obj(p + 2, () => { put('<< /Type /XObject /Subtype /Image /Width ' + im.w + ' /Height ' + im.h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + im.bytes.length + ' >>\nstream\n'); put(im.bytes); put('\nendstream'); }); });
+  const total = 3 + N * 3, xref = len; let x = 'xref\n0 ' + total + '\n0000000000 65535 f \n'; for (let n = 1; n < total; n++) x += String(offs[n]).padStart(10, '0') + ' 00000 n \n';
+  put(x + 'trailer\n<< /Size ' + total + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF');
+  const url = URL.createObjectURL(new Blob(parts, { type: 'application/pdf' })); saveBlobURL(url, (INK.title || '악보').replace(/[\\/:*?"<>|]/g, '') + '.pdf'); setTimeout(() => URL.revokeObjectURL(url), 60000); toast('PDF를 만들었어요');
+}
+
+if (!PW) lockScreen(); else start();
+})();
+</script>
+</body>
+</html>
