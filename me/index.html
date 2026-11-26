@@ -606,7 +606,7 @@ async function teamTab(){
   const t = view.team || LS.get('arr-team', 'hiel');
   $app.innerHTML = tabs() + '<div class="teamsw"><button class="hiel' + (t === 'hiel' ? ' on' : '') + '" data-team="hiel">히엘워십</button><button class="dwave' + (t === 'dwave' ? ' on' : '') + '" data-team="dwave">D-wave 워십</button>' +
     '<a class="tb" style="margin-left:auto;text-decoration:none;display:inline-flex;align-items:center" href="' + TEAM_APP + '?team=' + t + '" target="_blank" rel="noopener">새 창 ↗</a></div>' +
-    '<iframe class="teamfr" src="' + TEAM_APP + '?team=' + t + (view.set ? '&set=' + encodeURIComponent(view.set) : '') + '" title="찬양팀 악보 앱" allow="clipboard-write; fullscreen; autoplay; encrypted-media; picture-in-picture"></iframe>';
+    '<iframe class="teamfr" src="' + TEAM_APP + '?team=' + t + (view.set ? '&set=' + encodeURIComponent(view.set) : '') + '" title="찬양팀 악보 앱" allow="clipboard-write; fullscreen; autoplay; encrypted-media; picture-in-picture; web-share"></iframe>';
   bindTabs(); $app.querySelectorAll('[data-team]').forEach(b => b.onclick = () => { LS.set('arr-team', b.dataset.team); go({ tab: 'team', team: b.dataset.team }); });
 }
 async function teamSetView(){
@@ -672,7 +672,7 @@ function tools(){
   let h = '<div class="trow"><button class="tb' + (d ? '' : ' on') + '" data-mode="view">보기</button><button class="tb' + (d ? ' on' : '') + '" data-mode="draw">✎ 쓰기</button><button class="tb" id="flipBtn">📖 넘기기</button>';
   if (d) h += PENS.map(p => '<button class="tb' + (INK.tool === 'pen' && INK.color === p.c ? ' on' : '') + '" data-pen="' + p.c + '" aria-label="' + p.n + '"><span class="dot" style="background:' + p.c + '"></span></button>').join('') +
     '<button class="tb' + (INK.tool === 'hl' ? ' on' : '') + '" data-tool="hl"><span class="dot" style="background:#FFD84A"></span>형광</button><button class="tb' + (INK.tool === 'tx' ? ' on' : '') + '" data-tool="tx">🏷 주석</button><button class="tb' + (INK.tool === 'er' ? ' on' : '') + '" data-tool="er">지우개</button><button class="tb" id="undo">↶</button><button class="tb' + (INK.penOnly ? ' on' : '') + '" id="po">펜으로만</button>';
-  h += '<button class="tb" id="dl">⬇ PDF</button><span class="save" id="sv"></span></div>';
+  h += '<button class="tb" id="dl">⬇ PDF</button><button class="tb" id="shp" title="Piascore·forScore 등 다른 앱으로 보내기">📤 다른 앱으로</button><span class="save" id="sv"></span></div>';
   if (d && INK.tool === 'tx') h += '<div class="trow" style="margin-top:6px">' + STAMPS.map(t => '<button class="tb' + (INK.stamp === t ? ' on' : '') + '" data-stamp="' + esc(t) + '">' + esc(t) + '</button>').join('') + '<button class="tb" id="stNew">＋ 직접</button></div>';
   T.innerHTML = h;
   T.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { INK.drawing = b.dataset.mode === 'draw'; tools(); modeClass(); });
@@ -682,7 +682,8 @@ function tools(){
   const sn = document.getElementById('stNew'); if (sn) sn.onclick = () => { const v = prompt('주석 글자 (짧게)'); if (v && v.trim()) { INK.stamp = v.trim().slice(0, 20); tools(); } };
   const u = document.getElementById('undo'); if (u) u.onclick = undo;
   const po = document.getElementById('po'); if (po) po.onclick = () => { INK.penOnly = !INK.penOnly; LS.set('arr-penonly', INK.penOnly); tools(); modeClass(); };
-  document.getElementById('dl').onclick = exportPdf;
+  document.getElementById('dl').onclick = () => exportPdf(false);
+  const shp = document.getElementById('shp'); if (shp) shp.onclick = () => exportPdf(true);
   const fb = document.getElementById('flipBtn'); if (fb) fb.onclick = () => flipOpen(null);
 }
 /* ── 넘기기 보기 (Piascore 방식): 한 쪽씩 크게 · 오른쪽/왼쪽 탭·옆으로 밀기·블루투스 페달로 넘김 · 반 쪽 넘기기 · 가로 두 쪽 ── */
@@ -801,7 +802,7 @@ async function flushSave(){ clearTimeout(saveT); if (!INK || !INK.dirty || savin
   try { await api('saveAnn', my.verId, clean); saving = false; const s2 = document.getElementById('sv'); if (s2 && INK === my) s2.textContent = '✓ 저장됨'; if (my.dirty) flushSave(); }
   catch(e){ saving = false; my.dirty = true; const s2 = document.getElementById('sv'); if (s2) s2.textContent = '저장 못 함 — 다시 시도 중'; saveT = setTimeout(flushSave, 5000); } }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
-function exportPdf(){
+async function exportPdf(share){
   if (!INK || !INK.pages.length || !INK.pages[0].w) return toast('악보를 다 불러온 뒤에 눌러 주세요');
   const imgs = INK.pages.map(pg => { const src = pg.wrap.querySelector('.sc'), W = Math.min(2000, Math.round(pg.w)), H = Math.round(pg.h * W / pg.w), c = document.createElement('canvas'); c.width = W; c.height = H; const ctx = c.getContext('2d');
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.drawImage(src, 0, 0, W, H); drawPage(pg, ctx, W); return { w: W, h: H, bytes: b64bytes(c.toDataURL('image/jpeg', .88).split(',')[1]) }; });
@@ -814,7 +815,11 @@ function exportPdf(){
     obj(p + 2, () => { put('<< /Type /XObject /Subtype /Image /Width ' + im.w + ' /Height ' + im.h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + im.bytes.length + ' >>\nstream\n'); put(im.bytes); put('\nendstream'); }); });
   const total = 3 + N * 3, xref = len; let x = 'xref\n0 ' + total + '\n0000000000 65535 f \n'; for (let n = 1; n < total; n++) x += String(offs[n]).padStart(10, '0') + ' 00000 n \n';
   put(x + 'trailer\n<< /Size ' + total + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF');
-  const url = URL.createObjectURL(new Blob(parts, { type: 'application/pdf' })); saveBlobURL(url, (INK.title || '악보').replace(/[\\/:*?"<>|]/g, '') + '.pdf'); setTimeout(() => URL.revokeObjectURL(url), 60000); toast('PDF를 만들었어요');
+  const blob = new Blob(parts, { type: 'application/pdf' }), name = (INK.title || '악보').replace(/[\\/:*?"<>|]/g, '') + '.pdf';
+  if (share === true) { const file = new File([blob], name, { type: 'application/pdf' });
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; } } catch(e){ if (e && e.name === 'AbortError') return; }
+    toast('공유 창을 열 수 없어 PDF로 내려받았어요. 파일 앱에서 Piascore로 보내 주세요'); }
+  const url = URL.createObjectURL(blob); saveBlobURL(url, name); setTimeout(() => URL.revokeObjectURL(url), 60000); if (share !== true) toast('PDF를 만들었어요');
 }
 
 if (!PW) lockScreen(); else start();
