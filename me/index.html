@@ -95,7 +95,8 @@ pre.ly{white-space:pre-wrap;font:inherit;line-height:1.8;background:var(--bg);bo
 .modal .card{width:min(520px,100%)}
 .modal h3{margin:0 0 6px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;z-index:60;font-size:15px}
-.teamsw{display:flex;gap:8px;margin-bottom:12px}
+.teamsw{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+.teamfr{display:block;border:0;width:100vw;margin-left:calc(50% - 50vw);height:calc(100vh - 175px);height:calc(100dvh - 175px);min-height:520px;background:#EFECE6}
 .teamsw button{flex:1;min-height:46px;border-radius:12px;border:2px solid var(--line);background:#fff;font-weight:700}
 .teamsw button.on.hiel{background:#5B4B3A;color:#fff;border-color:#5B4B3A}
 .teamsw button.on.dwave{background:#1B2A45;color:#fff;border-color:#1B2A45}
@@ -460,15 +461,14 @@ window.addEventListener('beforeunload', e => { if (REC && REC.state === 'recordi
 
 /* ── 팀 콘티 (읽기) ── */
 async function teamData(t, force){ if (!TEAM[t] || force) TEAM[t] = await api('teamData', t); return TEAM[t]; }
+/* 팀 콘티: 찬양팀 악보 앱 화면을 그대로 보여 줌 (악보·필기·레퍼런스·가사 모두 같은 모습) */
+const TEAM_APP = 'https://script.google.com/macros/s/AKfycbx_ylenPtjX6abUs4R5IPOyEAsIb8biF0-IMgFPVlJjLKylK_YgRCU0dIQed1ibJCO08g/exec';
 async function teamTab(){
   const t = view.team || LS.get('arr-team', 'hiel');
-  $app.innerHTML = tabs() + '<div class="teamsw"><button class="hiel' + (t === 'hiel' ? ' on' : '') + '" data-team="hiel">히엘워십</button><button class="dwave' + (t === 'dwave' ? ' on' : '') + '" data-team="dwave">D-wave 워십</button></div><div id="tl"><div class="loading">불러오는 중…</div></div>';
+  $app.innerHTML = tabs() + '<div class="teamsw"><button class="hiel' + (t === 'hiel' ? ' on' : '') + '" data-team="hiel">히엘워십</button><button class="dwave' + (t === 'dwave' ? ' on' : '') + '" data-team="dwave">D-wave 워십</button>' +
+    '<a class="tb" style="margin-left:auto;text-decoration:none;display:inline-flex;align-items:center" href="' + TEAM_APP + '?team=' + t + '" target="_blank" rel="noopener">새 창 ↗</a></div>' +
+    '<iframe class="teamfr" src="' + TEAM_APP + '?team=' + t + '" title="찬양팀 악보 앱" allow="clipboard-write; fullscreen; autoplay; encrypted-media; picture-in-picture"></iframe>';
   bindTabs(); $app.querySelectorAll('[data-team]').forEach(b => b.onclick = () => { LS.set('arr-team', b.dataset.team); go({ tab: 'team', team: b.dataset.team }); });
-  const d = await teamData(t, true); const tl = document.getElementById('tl'); if (!tl) return;
-  if (!d.sets.length) return tl.innerHTML = '<div class="empty">이 팀에는 아직 콘티가 없어요.</div>';
-  const months = []; d.sets.forEach(s => { const m = s.date.slice(0, 7); let g = months.find(x => x.m === m); if (!g) months.push(g = { m, list: [] }); g.list.push(s); });
-  tl.innerHTML = months.map(g => '<div class="month">' + esc(g.m.replace(/^(\d{4})-(\d\d)$/, (a, y, mm) => y + '년 ' + (+mm) + '월')) + '</div><div class="list">' + g.list.map(s => '<button class="item" data-set="' + s.id + '"><b>' + esc(dateText(s.date)) + '</b> <span class="m">' + esc(s.name) + '</span><div class="m">' + esc(d.songs.filter(x => x.setId === s.id).sort((a, b) => a.order - b.order).map(x => x.title).filter(Boolean).join(' · ')) + '</div></button>').join('') + '</div>').join('');
-  tl.querySelectorAll('[data-set]').forEach(b => b.onclick = () => go({ tab: 'team', team: t, name: 'teamset', id: b.dataset.set }));
 }
 async function teamSetView(){
   const t = view.team, d = await teamData(t), s = d.sets.find(x => x.id === view.id); if (!s) return go({ tab: 'team', team: t });
