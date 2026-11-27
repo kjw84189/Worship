@@ -381,6 +381,8 @@ function editSong(s){
   s = s || { title: '', kind: '편곡', key: '', bpm: '', memo: '', form: '', lyrics: '' };
   modal('<h3>' + (s.id ? '곡 정보 고치기' : '새 곡') + '</h3>' +
     '<label class="f" for="t">제목</label><input class="in" id="t" value="' + esc(s.title) + '">' +
+    (s.id ? '' : '<div class="card" style="margin-top:12px;padding:12px 14px;background:#FBF8F1"><label class="f" for="nsf" style="margin-top:0">🎼 악보 (PDF 또는 사진 여러 장)</label><input class="in" id="nsf" type="file" accept="application/pdf,image/*" multiple style="padding:10px">' +
+      '<label class="f" for="naf">🎧 음원 (mp3, m4a, wav — Suno 결과도)</label><input class="in" id="naf" type="file" accept="audio/*,.mp3,.m4a,.wav,.aac" multiple style="padding:10px"><p class="small" style="margin:6px 0 0">여기 올린 파일은 <b>첫 번째 버전</b>으로 저장돼요. 나중에 고친 악보는 곡 화면의 <b>＋ 새 버전 올리기</b>로 더 올리면 돼요.</p></div>') +
     '<div class="row"><div><label class="f" for="k">종류</label><select class="in" id="k">' + ['편곡', '작곡', '기타'].map(k => '<option' + (s.kind === k ? ' selected' : '') + '>' + k + '</option>').join('') + '</select></div>' +
     '<div><label class="f" for="ky">키</label><input class="in" id="ky" placeholder="예: G, Bb" value="' + esc(s.key) + '"></div><div><label class="f" for="bp">템포</label><input class="in" id="bp" inputmode="numeric" placeholder="BPM" value="' + esc(s.bpm) + '"></div></div>' +
     '<label class="f" for="me">메모 (코드 진행, 아이디어, 편성 등)</label><textarea class="in" id="me" placeholder="예: 후렴 | G D/F# Em C |&#10;브릿지 4마디 빌드업 후 브레이크">' + esc(s.memo) + '</textarea>' +
@@ -394,9 +396,14 @@ function editSong(s){
     const chk = () => { const L = libFind(TT.value); LB.disabled = !L; LM.textContent = L ? '보관함에 "' + L.title + '" 가사가 있어요.' : (LIB && TT.value.trim() ? '보관함에 같은 제목의 가사가 없어요.' : ''); };
     loadLib().then(chk); TT.addEventListener('input', chk);
     LB.onclick = () => { const L = libFind(TT.value); if (!L) return; if (T.value.trim() && !confirmInline(LB, '지금 가사를 바꿀까요? 한 번 더 누르세요')) return; T.value = L.lyrics; if (!F.value.trim()) F.value = L.form || ''; toast('보관함 가사를 넣었어요. 확인 후 저장하세요'); };
-    m.querySelector('#o').onclick = async ev => { const v = id => m.querySelector('#' + id).value; if (!v('t').trim()) return m.querySelector('#e').textContent = '제목을 적어 주세요.';
-      const b = ev.target; b.disabled = true; b.textContent = '저장하는 중…';
+    m.querySelector('#o').onclick = async ev => { const v = id => m.querySelector('#' + id).value, E = m.querySelector('#e'); if (!v('t').trim()) return E.textContent = '제목을 적어 주세요.';
+      const sfI = m.querySelector('#nsf'), afI = m.querySelector('#naf'), sf = sfI ? [...sfI.files] : [], af = afI ? [...afI.files] : [];
+      if (sf.some(f => /\.hwpx?$/i.test(f.name))) return E.textContent = '한글 파일은 PDF로 저장해서 올려 주세요.';
+      const total = sf.concat(af).reduce((a, f) => a + f.size, 0); if (total > 40 * 1048576) return E.textContent = '파일이 너무 커요. 40MB 이하로 나눠서 올려 주세요.';
+      const b = ev.target; b.disabled = true; b.textContent = total ? '올리는 중… (' + sizeText(total) + ')' : '저장하는 중…';
       try { const r = await api('saveSong', { id: s.id, title: v('t').trim(), kind: v('k'), key: v('ky').trim(), bpm: v('bp').trim(), memo: v('me'), form: v('fo').trim(), lyrics: v('ly').replace(/\s+$/, '') });
+        if (sf.length || af.length) { const scores = await Promise.all(sf.map(readFile)), audios = await Promise.all(af.map(readFile));
+          await api('saveVersion', r.id, { name: (v('k') === '작곡' ? '작곡' : '편곡') + ' 1차', date: nowStr().slice(0, 10), memo: '' }, scores, audios, []); }
         closeModal(); await loadSongs(true); go({ tab: 'songs', name: 'song', id: r.id }); toast('저장했어요'); }
       catch(e){ b.disabled = false; b.textContent = '저장'; m.querySelector('#e').textContent = e.message; } };
   });
