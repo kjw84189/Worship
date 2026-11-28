@@ -198,7 +198,7 @@ const ABBR = [[/^(i|in|intro)$/i, 'Intro'], [/^(it|int|inter|interlude)$/i, 'Int
 /* 괄호 밖의 쉼표로 나누기: "A,B,C" → A · B · C (가사 펼칠 때만) */
 function splitTop(t){ const out = []; let d = 0, cur = ''; for (const ch of t) { if (ch === '(' || ch === '[') d++; else if ((ch === ')' || ch === ']') && d) d--; if (ch === ',' && !d) { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out.map(x => x.trim()).filter(Boolean); }
 function formItems(f, split){ const out = [];
-  const toks = []; String(f || '').split(/[\/|→\n]+/).map(t => t.trim()).filter(Boolean).forEach(t => { const P = split ? splitTop(t) : [t]; P.length > 1 ? P.forEach(x => toks.push(x)) : toks.push(t); });
+  const toks = []; String(f || '').split(/[\/|→\n]+/).map(t => t.trim()).filter(Boolean).forEach(t => { let pre = ''; const P = (split ? splitTop(t) : [t]).map(x => { if (/^\d+\b/.test(x) && pre) return pre + x; const mm = /^([A-Za-z]+)\d+\b/.exec(x); pre = mm ? mm[1] : ''; return x; }); P.length > 1 ? P.forEach(x => toks.push(x)) : toks.push(t); });
   toks.forEach(t => {
     let rep = 1, bars = 0, m; const label = t.replace(/\s+/g, ' ');
     // 앞에 붙은 메모·키업 표시는 빼고 파트 이름을 찾음: "(Key up to F) C" · "Key up 3절" · "키업 B"
