@@ -195,9 +195,14 @@ function closeModal(){ $modal.innerHTML = ''; }
    I/In=Intro, It/Int=Inter, O/Out=Outro, Ed/End=Ending 으로 읽음 */
 const INSTR = /^[\(\[]?\s*(intro|inter|interlude|outro|ending|solo|pad|rit|간주|전주|후주|인트로|인터|아웃트로|엔딩|솔로|패드|기도|멘트)/i;
 const ABBR = [[/^(i|in|intro)$/i, 'Intro'], [/^(it|int|inter|interlude)$/i, 'Inter'], [/^(o|out|outro)$/i, 'Outro'], [/^(ed|end|ending)$/i, 'Ending']];
-function formItems(f){ const out = [];
-  String(f || '').split(/[\/|→\n]+/).map(t => t.trim()).filter(Boolean).forEach(t => {
+/* 괄호 밖의 쉼표로 나누기: "A,B,C" → A · B · C (가사 펼칠 때만) */
+function splitTop(t){ const out = []; let d = 0, cur = ''; for (const ch of t) { if (ch === '(' || ch === '[') d++; else if ((ch === ')' || ch === ']') && d) d--; if (ch === ',' && !d) { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out.map(x => x.trim()).filter(Boolean); }
+function formItems(f, split){ const out = [];
+  const toks = []; String(f || '').split(/[\/|→\n]+/).map(t => t.trim()).filter(Boolean).forEach(t => { const P = split ? splitTop(t) : [t]; P.length > 1 ? P.forEach(x => toks.push(x)) : toks.push(t); });
+  toks.forEach(t => {
     let rep = 1, bars = 0, m; const label = t.replace(/\s+/g, ' ');
+    // 앞에 붙은 메모·키업 표시는 빼고 파트 이름을 찾음: "(Key up to F) C" · "Key up 3절" · "키업 B"
+    { const r = t.replace(/^\s*[\(\[][^\)\]]*[\)\]]\s*/, '').replace(/^\s*(key\s*-?\s*up|키\s*업|전조|up)\b\s*/i, '').replace(/^\s*(키\s*업|전조)\s*/, ''); if (r.trim() && r !== t) t = r; }
     // x2 · Dx2(drum) · B(+1)x2 → 반복 횟수
     if ((m = /\s*[x×*]\s*(\d+)\s*(?=([\(\[][^\)\]]*[\)\]])?\s*$)/i.exec(t))) { rep = Math.min(9, +m[1] || 1); t = t.slice(0, m.index) + t.slice(m.index + m[0].length); }
     const head = t.trim().replace(/\s+/g, ' ');
@@ -213,7 +218,7 @@ function formItems(f){ const out = [];
     out.push({ name, bars, plus, rep, head, label, tail }); });
   return out; }
 function parseForm(f){ return formItems(f).map(i => i.label); }
-function formNames(f){ const all = [...new Set(formItems(f).map(i => i.name))];
+function formNames(f){ const all = [...new Set(formItems(f, true).map(i => i.name))];
   return all.filter(n => !(/^\D+$/.test(n) && all.some(o => o !== n && o.toLowerCase().startsWith(n.toLowerCase()) && /^\d+$/.test(o.slice(n.length))))); }
 function hasSec(sec, n){ return Object.keys(sec).some(k => k.toLowerCase() === n.toLowerCase()); }
 /* 가사 칸 이름 정리: [A break] [Dx2 드럼] [Inter+4] [B1} [키업][D] → A · D · Inter · B1 · D */
@@ -262,7 +267,7 @@ function frameLyrics(form, text){ const names = formNames(form); if (!names.leng
   order.filter(k => !used.has(k) && sec[k]).forEach(k => out.push(blk(k)));
   return out.join('\n\n').trim() + '\n'; }
 /* 송폼 순서대로 펼친 가사 (반복 ×2 는 가사도 두 번) */
-function expandLyrics(x){ const P = parseSections(x.lyrics), { sec, order } = P, items = formItems(x.form);
+function expandLyrics(x){ const P = parseSections(x.lyrics), { sec, order } = P, items = formItems(x.form, true);
   if (!items.length) return P.seq.filter(s => s.key || s.body).map(s => (s.key ? '[' + s.key + ']\n' : '') + s.body).join('\n\n').trim();
   const out = [], cnt = {}; let last = '';
   items.forEach(it => { const isBis = /^bis$/i.test(it.name), isTag = /^tag$/i.test(it.name), instr = INSTR.test(it.name);
